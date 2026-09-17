@@ -37,6 +37,7 @@ const IN_WORDS: Record<string, string> = {
 	paused: 'paused',
 	keyRejected: 'key rejected',
 	packOff: 'this pack is off',
+	malformed: 'not an item this pack understands',
 	tooManyCalls: 'too many calls',
 	serviceDown: 'service down',
 	noNetwork: 'no network',

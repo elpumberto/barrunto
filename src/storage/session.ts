@@ -1,17 +1,20 @@
 import { storage } from 'wxt/utils/storage';
 import type { Answers } from '@/engine';
-import { inTurn } from './in-turn';
+import { takingTurns } from './in-turn';
+import { defaultSettings } from './types';
 import type { ConnectionStatus, Counters, Settings } from './types';
 
 // Session storage is wiped when the browser closes. The background opens it to the content script:
 // it holds the status, the counters and the answers, never the key or an item's words.
+
+const inTurn = takingTurns();
 
 /** How many items' answers the session keeps before the oldest are dropped. */
 export const ITEMS_KEPT = 2000;
 
 /** The settings as the content script sees them: a copy the background keeps, since local storage is closed to it. */
 export const pageSettings = storage.defineItem<Settings>('session:settings', {
-	fallback: { paused: false, tuning: false, lookAhead: 0, packs: {} }
+	fallback: defaultSettings
 });
 
 export const sessionCounters = storage.defineItem<Counters>('session:counters', {

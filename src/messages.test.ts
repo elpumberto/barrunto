@@ -52,6 +52,7 @@ describe('listen', () => {
 	it('ignores other extensions and messages it does not know', () => {
 		expect(deliver({ type: 'checkKey' }, { id: 'someone-else' }, vi.fn())).toBeUndefined();
 		expect(deliver({ type: 'unknown' }, fromPopup(), vi.fn())).toBeUndefined();
+		expect(deliver({ type: 'toString' }, fromPopup(), vi.fn())).toBeUndefined();
 		expect(deliver(null, fromPopup(), vi.fn())).toBeUndefined();
 	});
 

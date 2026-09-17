@@ -1,14 +1,17 @@
 import { storage } from 'wxt/utils/storage';
 import { packSettingsOf } from '@/engine';
-import type { Pack, PackSettings } from '@/engine';
-import { inTurn } from './in-turn';
+import type { Pack, PackSettings, Treatment } from '@/engine';
+import { takingTurns } from './in-turn';
+import { defaultSettings } from './types';
 import type { Counters, Sensitivity, Settings } from './types';
 
 // Local storage stays in this browser and survives closing it. The key is in it, so the background
 // closes it to the content script inside a page, which must not so much as load this file:
 // an item looks itself up as soon as it is defined.
 
-export const defaultSettings: Settings = { paused: false, tuning: false, lookAhead: 3, packs: {} };
+const inTurn = takingTurns();
+
+export { defaultSettings };
 export const noCounters: Counters = { items: 0, tokensIn: 0, tokensOut: 0 };
 
 /** Settings as Barrunto 1 kept them, when X.com was all there was. */
@@ -23,9 +26,10 @@ export const apiKey = storage.defineItem<string | null>('local:key', {
 	version: 1
 });
 
-const FADED: PackSettings['treatments'] = { snark: 'fade', tangent: 'fade' };
+/** What Hacker News's own control for fading its noise, on or off, comes to now. */
+const HN_NOISE = ['snark', 'tangent'];
 
-/** A pack's settings before each noise judgment had its treatment, when fading was a control of Hacker News's own. */
+/** A pack's settings in versions 2 and 3: before each noise judgment had its treatment, when fading was a control of Hacker News's own. */
 type PackSettingsV3 = Omit<PackSettings, 'treatments'>;
 interface SettingsV2 {
 	paused: boolean;
@@ -48,26 +52,17 @@ export const settings = storage.defineItem<Settings>('local:settings', {
 			...before,
 			lookAhead: defaultSettings.lookAhead
 		}),
-		// Whoever had Hacker News fade its noise keeps it faded.
+		// Whoever had Hacker News fade its noise keeps it faded, and whoever had it not, only labelled.
 		4: (before: SettingsV3): Settings => ({
 			...before,
 			packs: Object.fromEntries(
-				Object.entries(before.packs).map(
-					([
-						id,
-						{
-							options: { fade, ...options },
-							...chosen
-						}
-					]) => [
-						id,
-						{
-							...chosen,
-							options,
-							treatments: id === 'hn' && fade ? FADED : {}
-						}
-					]
-				)
+				Object.entries(before.packs).map(([id, { options = {}, ...chosen }]) => {
+					const { fade, ...rest } = options;
+					const asked: Treatment = fade ? 'fade' : 'label';
+					const treatments: PackSettings['treatments'] =
+						id === 'hn' ? Object.fromEntries(HN_NOISE.map((j) => [j, asked])) : {};
+					return [id, { ...chosen, options: rest, treatments }];
+				})
 			)
 		})
 	}
@@ -97,4 +92,9 @@ export function changePack(
 			packs: { ...now.packs, [pack.id]: { ...chosen, ...change(chosen) } }
 		});
 	});
+}
+
+/** Changes settings that are not a pack's, from what is stored now and not from what someone read a while ago. */
+export function changeSettings(change: Partial<Omit<Settings, 'packs'>>): Promise<void> {
+	return inTurn(async () => settings.setValue({ ...(await settings.getValue()), ...change }));
 }

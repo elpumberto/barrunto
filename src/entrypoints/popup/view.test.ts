@@ -14,6 +14,7 @@ const connected: PopupState = {
 	},
 	packs: [x, hn],
 	pack: x,
+	leave: { x: true, hn: true },
 	view: 'home',
 	about: null,
 	session: { items: 7, tokensIn: 1900, tokensOut: 98 },
@@ -240,6 +241,21 @@ describe('the popup', () => {
 		draw({ keyTail: '<b>x' });
 		expect(root.querySelector('.key b')).toBeNull();
 		expect(root.querySelector('.key .tail')!.textContent).toContain('<b>x');
+	});
+});
+
+describe('a pack that is wanted and has no leave', () => {
+	it('is off, and says what it is missing, over its page and in the catalogue', () => {
+		draw({ leave: { x: false, hn: true } });
+		expect(root.querySelector('.stops')).toBeNull();
+		expect(root.textContent).toContain('needs your leave');
+		click('[data-action="enable"][data-pack="x"]');
+		expect(actions.setEnabled).toHaveBeenCalledWith('x', true);
+
+		draw({ view: 'packs', leave: { x: false, hn: true } });
+		const entry = root.querySelector<HTMLElement>('.pack[data-pack="x"]')!;
+		expect(entry.querySelector('.switch')!.getAttribute('aria-checked')).toBe('false');
+		expect(entry.querySelector('.warning')!.textContent).toContain('no longer lets');
 	});
 });
 

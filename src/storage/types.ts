@@ -32,3 +32,6 @@ export type ConnectionStatus =
 
 /** The most items that may be asked about ahead: every one of them is paid for, read or not. */
 export const MOST_AHEAD = 50;
+
+/** Settings as they are until the user changes them. The page's copy starts the same, before the background fills it in. */
+export const defaultSettings: Settings = { paused: false, tuning: false, lookAhead: 3, packs: {} };

@@ -1,18 +1,31 @@
 import { browser } from 'wxt/browser';
-import type { Browser } from 'wxt/browser';
+import type { Pack } from '@/engine';
 import { packs } from '@/packs';
 import { changePack, settings } from '@/storage';
-import { inTurn } from '@/storage/in-turn';
+import { takingTurns } from '@/storage/in-turn';
 
 /** The name Chrome keeps the content script under, and where the build leaves it. */
 const SCRIPT = { id: 'barrunto', file: '/content-scripts/page.js' } as const;
 
+const inTurn = takingTurns();
+
+/** Whether Chrome holds the user's leave for Barrunto to act on the pack's sites. */
+export const hasLeave = (pack: Pack) => browser.permissions.contains({ origins: pack.sites });
+
 /**
- * Has the content script run on the sites of the packs that are on, and on no others. A pack is on
- * when the user has turned it on and Chrome holds their leave to act on its sites. Leave comes and
- * goes outside Barrunto too: Chrome's question can outlive the popup that asked it, and leave can
- * be taken back from Chrome's own pages. Either way the pack follows.
+ * The packs that are on: the ones the user has turned on and Chrome holds their leave for. The two
+ * are kept apart. What the user asked for is theirs and is never changed here; leave comes and goes
+ * outside Barrunto: taken back from Chrome's own pages, or never carried over by an update. A pack
+ * that is wanted and has no leave is off, and the popup says what it is missing.
  */
+export async function packsOn(): Promise<Pack[]> {
+	const { packs: chosen } = await settings.getValue();
+	const on: Pack[] = [];
+	for (const pack of packs) if (chosen[pack.id]?.enabled && (await hasLeave(pack))) on.push(pack);
+	return on;
+}
+
+/** Has the content script run on the sites of the packs that are on, and on no others. */
 export function keepPacksCurrent() {
 	settings.watch(sync);
 	browser.permissions.onAdded.addListener(turnOnWhatGotLeave);
@@ -20,24 +33,21 @@ export function keepPacksCurrent() {
 	void sync();
 }
 
-async function turnOnWhatGotLeave({ origins = [] }: Browser.permissions.Permissions) {
+/**
+ * Chrome's question can outlive the popup that asked it, so the answer is taken here. Leave is given
+ * back whenever a pack is turned off, so a pack that has it is one the user wants on. Chrome may
+ * word the sites its own way: what counts is whether it now holds leave for them, not how it says so.
+ */
+async function turnOnWhatGotLeave() {
 	for (const pack of packs) {
-		if (pack.sites.every((site) => origins.includes(site))) {
-			await changePack(pack, () => ({ enabled: true }));
-		}
+		if (await hasLeave(pack)) await changePack(pack, () => ({ enabled: true }));
 	}
+	await sync();
 }
 
 function sync(): Promise<void> {
 	return inTurn(async () => {
-		const stored = await settings.getValue();
-		const sites: string[] = [];
-		const revoked: string[] = [];
-		for (const pack of packs) {
-			if (!stored.packs[pack.id]?.enabled) continue;
-			if (await browser.permissions.contains({ origins: pack.sites })) sites.push(...pack.sites);
-			else revoked.push(pack.id);
-		}
+		const sites = (await packsOn()).flatMap((pack) => pack.sites);
 
 		// Only when the sites change: taking the script down and up again would miss a page loading meanwhile.
 		const [registered] = await browser.scripting.getRegisteredContentScripts({ ids: [SCRIPT.id] });
@@ -50,26 +60,24 @@ function sync(): Promise<void> {
 		} else if ([...before].sort().join() !== [...sites].sort().join()) {
 			await browser.scripting.updateContentScripts([script]);
 		}
-		await reach(sites.filter((site) => !before.includes(site)));
-
-		if (revoked.length) {
-			const entries = revoked.map((id) => [id, { ...stored.packs[id]!, enabled: false }]);
-			await settings.setValue({
-				...stored,
-				packs: { ...stored.packs, ...Object.fromEntries(entries) }
-			});
-		}
-	}).catch((error) => console.error('[barrunto] could not register the packs', error));
+		return sites.filter((site) => !before.includes(site));
+	}).then(reach, (error: unknown) =>
+		console.error('[barrunto] could not register the packs', error)
+	);
 }
 
-/** Chrome runs a newly registered script only on pages loaded from then on: the ones already open get it by hand. */
+/**
+ * Chrome runs a newly registered script only on pages loaded from then on: the ones already open
+ * get it by hand. Nobody waits for this: a tab that is slow to take it holds nothing else up, and
+ * one that cannot take it (still loading, discarded) picks the script up when it next loads.
+ */
 async function reach(sites: string[]) {
 	if (!sites.length) return;
-	for (const { id } of await browser.tabs.query({ url: sites })) {
-		if (id === undefined) continue;
-		// A tab that cannot take it (still loading, discarded) picks the script up when it next loads.
-		await browser.scripting
-			.executeScript({ target: { tabId: id }, files: [SCRIPT.file] })
-			.catch(() => {});
-	}
+	const tabs = await browser.tabs.query({ url: sites });
+	const taking = tabs.flatMap(({ id }) =>
+		id === undefined
+			? []
+			: [browser.scripting.executeScript({ target: { tabId: id }, files: [SCRIPT.file] })]
+	);
+	void Promise.allSettled(taking);
 }

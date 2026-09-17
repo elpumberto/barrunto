@@ -87,6 +87,50 @@ describe('analyze', () => {
 		expect(asked.slice(4)).toEqual(['ahead 2', 'ahead 1']);
 	});
 
+	it('sends nothing that was waiting its turn once Barrunto is paused, and does not take it for trouble', async () => {
+		let open!: () => void;
+		const gate = new Promise<void>((resolve) => (open = resolve));
+		vi.mocked(jev.ask).mockImplementation(async () => {
+			await gate;
+			return { answers, usage: { tokensIn: 1, tokensOut: 1 } };
+		});
+		const all = ['a', 'b', 'c', 'd', 'waiting 1', 'waiting 2'].map((id) => analyze(post(id)));
+		await vi.waitFor(() => expect(jev.ask).toHaveBeenCalledTimes(4));
+		await settings.setValue({ ...(await settings.getValue()), paused: true });
+		open();
+
+		const results = await Promise.all(all);
+		expect(jev.ask).toHaveBeenCalledTimes(4);
+		expect(results.slice(4)).toEqual([
+			{ analyzed: false, reason: 'paused' },
+			{ analyzed: false, reason: 'paused' }
+		]);
+		expect(await connection.getValue()).toEqual({ state: 'connected' });
+	});
+
+	it('lets a call that ends late say nothing over a later one', async () => {
+		const ends: (() => void)[] = [];
+		vi.mocked(jev.ask)
+			.mockImplementationOnce(
+				() => new Promise((_, reject) => ends.push(() => reject(new Error('late'))))
+			)
+			.mockResolvedValueOnce({ answers, usage: { tokensIn: 1, tokensOut: 1 } });
+		const early = analyze(post('early'));
+		await vi.waitFor(() => expect(ends).toHaveLength(1));
+		await analyze(post('later'));
+		ends[0]!();
+		expect(await early).toEqual({ analyzed: false, reason: 'serviceDown' });
+		expect(await connection.getValue()).toEqual({ state: 'connected' });
+	});
+
+	it("takes an item its pack cannot make sense of for the item's fault, not Jev's", async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		const broken = { id: '11' } as Post;
+		expect(await analyze(broken)).toEqual({ analyzed: false, reason: 'malformed' });
+		expect(jev.ask).not.toHaveBeenCalled();
+		expect(await connection.getValue()).toEqual({ state: 'connected' });
+	});
+
 	it('answers a pack only while it is on, and only for its own sites', async () => {
 		answering();
 		const off = { analyzed: false, reason: 'packOff' };

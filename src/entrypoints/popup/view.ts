@@ -20,6 +20,8 @@ export interface PopupState {
 	packs: Pack[];
 	/** The pack of the page the popup was opened over, on or off, if there is one. */
 	pack: Pack | null;
+	/** For each pack, by id, whether Chrome holds the user's leave for its sites. A pack is on when it is wanted and has it. */
+	leave: Record<string, boolean>;
 	/** Which view is up: the home view, about this page, or the catalogue of packs. */
 	view: 'home' | 'packs';
 	/** In the catalogue, the pack whose description is unfolded. */
@@ -112,13 +114,15 @@ function keyForm({ form, connection }: PopupState, canCancel: boolean): string {
  * How things are analyzed on this page: the controls of its pack while it is on, the offer to turn
  * it on while it is off, how far ahead of the user it reads, and the tuning mode.
  */
-function analysis({ settings, pack }: PopupState): string {
+function analysis({ settings, pack, leave, packs }: PopupState): string {
 	const chosen = pack && packSettingsOf(pack, settings.packs[pack.id]);
-	const anyOn = Object.values(settings.packs).some((p) => p.enabled);
+	const anyOn = packs.some((p) => settings.packs[p.id]?.enabled && leave[p.id]);
 	let ofThisPage: string;
-	if (pack && chosen?.enabled) ofThisPage = packControls(pack, chosen);
+	if (pack && chosen?.enabled && leave[pack.id]) ofThisPage = packControls(pack, chosen);
 	else if (pack) {
-		ofThisPage = `<div class="inline"><div><div class="title">${texts.packs.off.title}</div><p class="help">${texts.packs.off.help}</p></div>
+		// Wanted and without leave is off too, but for another reason, and the way out is the same switch.
+		const why = chosen?.enabled ? texts.packs.noLeave : texts.packs.off;
+		ofThisPage = `<div class="inline"><div><div class="title">${why.title}</div><p class="${chosen?.enabled ? 'warning' : 'help'}">${why.help}</p></div>
 			${toggle('enable', false, texts.packs.on(pack.name), `data-pack="${pack.id}"`)}</div>`;
 	} else {
 		ofThisPage = `<p class="${anyOn ? 'help' : 'warning'}">${anyOn ? texts.packs.notHere : texts.packs.noneOn}</p>`;

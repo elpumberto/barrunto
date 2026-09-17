@@ -43,6 +43,10 @@ export const texts = {
 		noneOn: 'No rule pack is on, so Barrunto reads nothing. Turn one on in Rule packs.',
 		notHere: 'There is no rule pack for this page.',
 		off: { title: 'This pack is off', help: 'Turn it on and Barrunto reads this site.' },
+		noLeave: {
+			title: 'This pack needs your leave',
+			help: 'Chrome no longer lets Barrunto read this site. Turn the pack on again.'
+		},
 		leave:
 			'Barrunto reads a site only while its pack is on. Chrome asks your leave when you turn one on.'
 	},

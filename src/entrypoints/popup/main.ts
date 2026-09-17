@@ -17,6 +17,14 @@ import { closedForm, renderPopup, tailOf } from './view';
 
 const root = document.getElementById('popup')!;
 
+/** For each pack, whether Chrome holds the user's leave for its sites. */
+async function leaveHeld(): Promise<Record<string, boolean>> {
+	const held = await Promise.all(
+		packs.map((pack) => browser.permissions.contains({ origins: pack.sites }))
+	);
+	return Object.fromEntries(packs.map((pack, i) => [pack.id, held[i]!]));
+}
+
 /** The pack of the page the popup was opened over. Opening the popup is what lets Barrunto see that page's address. */
 async function packOfThisTab(): Promise<Pack | null> {
 	const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
@@ -33,6 +41,7 @@ let state: PopupState = {
 	settings: await settings.getValue(),
 	packs,
 	pack: await packOfThisTab(),
+	leave: await leaveHeld(),
 	view: 'home',
 	about: null,
 	session: await sessionCounters.getValue(),
@@ -111,5 +120,8 @@ settings.watch((next) => set({ settings: next }));
 sessionCounters.watch((next) => set({ session: next }));
 totalCounters.watch((next) => set({ total: next }));
 apiKey.watch((next) => set({ keyTail: tailOf(next) }));
+const leaveChanged = () => void leaveHeld().then((leave) => set({ leave }));
+browser.permissions.onAdded.addListener(leaveChanged);
+browser.permissions.onRemoved.addListener(leaveChanged);
 
 set({});

@@ -14,8 +14,11 @@ interface Messages {
 /** Only a page asks for analyses; everything else is for Barrunto's own pages to ask. */
 const FROM_A_PAGE: MessageType[] = ['analyze'];
 
-/** Why the background did not analyze an item it was asked about. `packOff`: that pack is not on for that page. */
-export type NotAnalyzed = 'noKey' | 'paused' | 'keyRejected' | 'packOff' | Trouble;
+/**
+ * Why the background did not analyze an item it was asked about. `packOff`: that pack is not on for
+ * that page. `malformed`: the item is not one its pack can make sense of.
+ */
+export type NotAnalyzed = 'noKey' | 'paused' | 'keyRejected' | 'packOff' | 'malformed' | Trouble;
 
 /** The strengths and, for tuning mode, the answers; or that it was not analyzed, and why. */
 export type Analysis =
@@ -45,7 +48,9 @@ export async function send<T extends MessageType>(
 /** For the background: answers each message with its handler, if it comes from where it should. */
 export function listen(handlers: Handlers): void {
 	browser.runtime.onMessage.addListener((message: Message, sender, reply) => {
-		const handler = handlers[message?.type] as
+		// Only what is listed is answered: not what every object has besides, such as `toString`.
+		const known = message != null && Object.hasOwn(handlers, message.type);
+		const handler = (known ? handlers[message.type] : undefined) as
 			((m: Message, from: string) => Promise<unknown>) | undefined;
 		if (!handler || sender.id !== browser.runtime.id || !sender.url) return;
 

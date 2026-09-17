@@ -81,18 +81,32 @@ describe('what is chosen for a pack', () => {
 		expect(await totalCounters.getValue()).toEqual({ items: 7, tokensIn: 70, tokensOut: 7 });
 	});
 
-	it('keeps Hacker News fading its noise for whoever had asked it to', async () => {
-		const hnBefore = { enabled: true, sensitivity: 'low', options: { fade: true } };
-		await fakeBrowser.storage.local.set({
-			settings: { paused: false, tuning: false, lookAhead: 5, packs: { hn: hnBefore } },
+	it('keeps Hacker News fading its noise for whoever had asked it to, and only labelling for whoever had not', async () => {
+		const stored = (hnBefore: object) => ({
+			settings: { paused: false, tuning: false, lookAhead: 5, packs: { hn: hnBefore, x: {} } },
 			settings$: { v: 3 }
 		});
+		await fakeBrowser.storage.local.set(
+			stored({ enabled: true, sensitivity: 'low', options: { fade: true } })
+		);
 		await settings.migrate();
 		expect((await settings.getValue()).packs.hn).toEqual({
 			enabled: true,
 			sensitivity: 'low',
 			treatments: { snark: 'fade', tangent: 'fade' },
 			options: {}
+		});
+		// A pack stored with no options at all does not stop the rest from being converted.
+		expect((await settings.getValue()).packs.x).toEqual({ treatments: {}, options: {} });
+
+		fakeBrowser.reset();
+		await fakeBrowser.storage.local.set(
+			stored({ enabled: true, sensitivity: 'low', options: { fade: false } })
+		);
+		await settings.migrate();
+		expect((await settings.getValue()).packs.hn?.treatments).toEqual({
+			snark: 'label',
+			tangent: 'label'
 		});
 	});
 });

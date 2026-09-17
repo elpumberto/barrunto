@@ -1,7 +1,9 @@
 import type { Usage } from '@/engine';
-import { inTurn } from './in-turn';
+import { takingTurns } from './in-turn';
 import { noCounters, totalCounters } from './local';
 import { sessionCounters } from './session';
+
+const inTurn = takingTurns();
 
 /** Adds one analyzed item and what it cost to the session and total counters. */
 export function countItem(usage: Usage): Promise<void> {
