@@ -92,3 +92,53 @@ svg {
 :host([data-place='inline']) .string {
 	display: none;
 }
+
+/* Jev is being asked: Barrunto's mark and three dots taking turns, until the labels come, or none do. */
+.waiting {
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	padding: 3px 6px;
+	border-radius: 9px;
+	background: rgb(127 127 127 / 18%);
+	pointer-events: auto;
+	cursor: progress;
+}
+
+.waiting svg {
+	width: 12px;
+	height: 12px;
+	margin-right: 1px;
+}
+
+.dot {
+	width: 3px;
+	height: 3px;
+	border-radius: 50%;
+	background: #8b98a5;
+}
+
+@keyframes turn {
+	0%,
+	60%,
+	100% {
+		opacity: 0.25;
+	}
+	30% {
+		opacity: 1;
+	}
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	.dot {
+		animation: turn 1.2s infinite;
+	}
+
+	.dot:nth-of-type(2) {
+		animation-delay: 0.2s;
+	}
+
+	.dot:nth-of-type(3) {
+		animation-delay: 0.4s;
+	}
+}

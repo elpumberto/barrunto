@@ -59,6 +59,20 @@ function labelNode(judgment: Judgment, arrive: boolean): HTMLElement {
 	return label;
 }
 
+/** The piece of page the labels go in, placed as the pack says. */
+function labelsRoot(anchor: HTMLElement, place: LabelPlace): ShadowRoot {
+	const hanging = place !== 'inline';
+	if (hanging && getComputedStyle(anchor).position === 'static') anchor.style.position = 'relative';
+	const root = shadowIn(anchor, 'labels', labelsCss);
+	const host = root.host as HTMLElement;
+	host.dataset.place = hanging ? 'hanging' : 'inline';
+	if (hanging) {
+		host.style.setProperty('--top', place.top);
+		host.style.setProperty('--right', place.right);
+	}
+	return root;
+}
+
 /**
  * Leaves in the anchor exactly the labels of these judgments, in this order, placed as the pack says.
  * Those already up stay as they are, those no longer wanted go at once, new ones drop in.
@@ -69,15 +83,8 @@ export function paintLabels(
 	place: LabelPlace,
 	arrive = true
 ): void {
-	const hanging = place !== 'inline';
-	if (hanging && getComputedStyle(anchor).position === 'static') anchor.style.position = 'relative';
-	const root = shadowIn(anchor, 'labels', labelsCss);
-	const host = root.host as HTMLElement;
-	host.dataset.place = hanging ? 'hanging' : 'inline';
-	if (hanging) {
-		host.style.setProperty('--top', place.top);
-		host.style.setProperty('--right', place.right);
-	}
+	const root = labelsRoot(anchor, place);
+	root.querySelector('.waiting')?.remove();
 
 	const up = new Map<string, HTMLElement>();
 	for (const node of root.querySelectorAll<HTMLElement>('.label')) {
@@ -86,6 +93,21 @@ export function paintLabels(
 	const wanted = judgments.map((j) => up.get(j.id) ?? labelNode(j, arrive));
 	for (const node of up.values()) if (!wanted.includes(node)) node.remove();
 	root.append(...wanted);
+}
+
+/**
+ * Says, where the labels go, that Jev is being asked about this item: the user got here before the
+ * answer did. It goes as soon as the labels are painted, even if there are none.
+ */
+export function paintWaiting(anchor: HTMLElement, place: LabelPlace): void {
+	const root = labelsRoot(anchor, place);
+	if (root.querySelector('.waiting, .label')) return;
+	const waiting = el('span', 'waiting');
+	waiting.title = 'Barrunto is asking Jev about this.';
+	// The drawing is Barrunto's own, a file in its code.
+	waiting.innerHTML = logo;
+	waiting.append(el('i', 'dot'), el('i', 'dot'), el('i', 'dot'));
+	root.append(waiting);
 }
 
 function bar(value: number, ticks?: { thresholds: Judgment['thresholds']; current: Sensitivity }) {

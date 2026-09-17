@@ -12,6 +12,10 @@ import puppeteer from 'puppeteer-core';
 const EXTENSION = resolve('.output/chrome-mv3');
 const POSTS = 12;
 const ON_SCREEN = 5;
+const COMMENTS = 9;
+const AHEAD = 2;
+/** How many of the made-up comments fit the screen: the story's title takes a little of it. */
+const IN_SIGHT = 5;
 
 const background = await readFile(`${EXTENSION}/background.js`, 'utf8');
 assert.ok(
@@ -34,7 +38,7 @@ const comment = (
 	<td class="default" style="height:160px"><span class="comhead"><a class="hnuser">user${n}</a></span>
 		<div class="comment"><div class="commtext">Made-up comment number ${n}, with a few words in it.</div></div></td></tr></table></td></tr>`;
 const thread = `<!doctype html><body style="margin:0"><table class="fatitem"><tr><td><span class="titleline"><a href="#">A made-up story</a></span></td></tr></table>
-	<table>${Array.from({ length: 3 }, (_, n) => comment(n)).join('')}</table></body>`;
+	<table>${Array.from({ length: COMMENTS }, (_, n) => comment(n)).join('')}</table></body>`;
 
 const labelsOnPage = (page, items = 'article', anchor = ':scope >') =>
 	page.$$eval(
@@ -88,6 +92,21 @@ try {
 	};
 	await turnOn('x');
 
+	/** How many items Barrunto reads ahead of the user, set in the popup. */
+	const readAhead = async (items) => {
+		await popup.bringToFront();
+		await popup.$eval(
+			'#ahead',
+			(field, value) => {
+				field.value = value;
+				field.dispatchEvent(new Event('change', { bubbles: true }));
+			},
+			String(items)
+		);
+	};
+	// With nothing read ahead, only what stays on screen is asked about.
+	await readAhead(0);
+
 	// The popup as the user opens it, over the page in front: that page's pack is what it shows.
 	const overThePage = async (pack, act) => {
 		const background = await worker.worker();
@@ -117,7 +136,12 @@ try {
 
 	// The posts on screen dwell, get analyzed and are counted; the ones below are left alone.
 	// (A tab that is not in front is told nothing about what is on screen, so the page stays in front.)
-	const looked = () => document.querySelectorAll('article > [data-barrunto="labels"]').length;
+	// The place for the labels is there from the asking, with a mark that Jev is being asked; it is
+	// looked at once the mark is gone.
+	const looked = () =>
+		[...document.querySelectorAll('article > [data-barrunto="labels"]')].filter(
+			(host) => !host.shadowRoot.querySelector('.waiting')
+		).length;
 	await page.waitForFunction(`(${looked})() === ${ON_SCREEN}`, { timeout: 15000 });
 	await popup.bringToFront();
 	const analyzed = () =>
@@ -153,14 +177,19 @@ try {
 	await new Promise((resolve) => setTimeout(resolve, 2500));
 	assert.equal(await page.$('[data-barrunto]'), null, 'a pack that is off leaves its site alone');
 	await turnOn('hn');
+	// Reading ahead: the comments in sight and the next few past them, and no further.
+	await readAhead(AHEAD);
 	await page.bringToFront();
 	await overThePage(/Hacker News/, (real) =>
 		real.click('[data-action="sensitivity"][data-value="ultra"]')
 	);
 	await page.bringToFront();
-	await page.waitForFunction(`(${looked.toString().replace('article >', '.comhead >')})() === 3`, {
-		timeout: 15000
-	});
+	await page.waitForFunction(
+		`(${looked.toString().replace('article >', '.comhead >')})() === ${IN_SIGHT + AHEAD}`,
+		{
+			timeout: 15000
+		}
+	);
 	const onThread = await labelsOnPage(page, 'tr.comtr', '.comhead >');
 	console.log('labels per comment on ultra:', JSON.stringify(onThread));
 	assert.ok(
@@ -168,7 +197,11 @@ try {
 		'comments get the labels of their own pack'
 	);
 	await popup.bringToFront();
-	assert.equal(await analyzed(), ON_SCREEN + 3, 'comments are counted with the posts');
+	assert.equal(
+		await analyzed(),
+		ON_SCREEN + IN_SIGHT + AHEAD,
+		'the comments in sight and the ones read ahead are counted with the posts, and no others'
+	);
 
 	assert.deepEqual(errors, [], 'nothing threw in the popup or the page');
 	console.log('ok');

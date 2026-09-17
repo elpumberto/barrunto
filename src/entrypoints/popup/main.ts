@@ -75,6 +75,7 @@ const actions: PopupActions = {
 			void changePack(pack, ({ options }) => ({ options: { ...options, [controlId]: on } }));
 	},
 	setTuning: (tuning) => void settings.setValue({ ...state.settings, tuning }),
+	setLookAhead: (lookAhead) => void settings.setValue({ ...state.settings, lookAhead }),
 	resetCounters: () => void send({ type: 'resetCounters' }),
 	go: (view) => set({ view }),
 	showAbout: (packId) => set({ about: state.about === packId ? null : packId }),

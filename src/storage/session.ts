@@ -11,7 +11,7 @@ export const ITEMS_KEPT = 2000;
 
 /** The settings as the content script sees them: a copy the background keeps, since local storage is closed to it. */
 export const pageSettings = storage.defineItem<Settings>('session:settings', {
-	fallback: { paused: false, tuning: false, packs: {} }
+	fallback: { paused: false, tuning: false, lookAhead: 0, packs: {} }
 });
 
 export const sessionCounters = storage.defineItem<Counters>('session:counters', {

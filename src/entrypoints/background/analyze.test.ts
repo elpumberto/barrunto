@@ -66,6 +66,27 @@ describe('analyze', () => {
 		expect(jev.ask).not.toHaveBeenCalled();
 	});
 
+	it('hurries a call that was waiting as read ahead when the user gets to the item', async () => {
+		const asked: string[] = [];
+		let open!: () => void;
+		const gate = new Promise<void>((resolve) => (open = resolve));
+		vi.mocked(jev.ask).mockImplementation(async (_key, content) => {
+			asked.push((content as { post: { text: string } }).post.text);
+			await gate;
+			return { answers, usage: { tokensIn: 1, tokensOut: 1 } };
+		});
+		const named = (id: string) => ({ ...post(id), text: id });
+		// Four calls fill what may be in flight; the rest wait, read ahead, in the order they came.
+		const all = ['a', 'b', 'c', 'd', 'ahead 1', 'ahead 2'].map((id) =>
+			analyzeFrom(x.id, named(id), HOME, false)
+		);
+		all.push(analyzeFrom(x.id, named('ahead 2'), HOME, true));
+		await vi.waitFor(() => expect(asked).toHaveLength(4));
+		open();
+		await Promise.all(all);
+		expect(asked.slice(4)).toEqual(['ahead 2', 'ahead 1']);
+	});
+
 	it('answers a pack only while it is on, and only for its own sites', async () => {
 		answering();
 		const off = { analyzed: false, reason: 'packOff' };

@@ -4,7 +4,8 @@ import type { Trouble } from '@/storage/types';
 
 /** What the parts of the extension ask the background, and what each gets back. */
 interface Messages {
-	analyze: { carries: { packId: string; item: Item }; returns: Analysis };
+	/** `urgent`: the item is in front of the user, and not one read ahead of them. */
+	analyze: { carries: { packId: string; item: Item; urgent: boolean }; returns: Analysis };
 	checkKey: { carries: { apiKey: string }; returns: KeyCheck };
 	forgetKey: { carries: object; returns: void };
 	resetCounters: { carries: object; returns: void };

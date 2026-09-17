@@ -43,4 +43,26 @@ describe('queue', () => {
 		await expect(queue.add(() => Promise.reject(new Error('no')))).rejects.toThrow('no');
 		await expect(queue.add(() => Promise.resolve('yes'))).resolves.toBe('yes');
 	});
+
+	it('lets the urgent go ahead of the rest, and hurries one that was not urgent', async () => {
+		const queue = createQueue(1);
+		const gate = deferred();
+		const started: string[] = [];
+		const task = (name: string) => () => {
+			started.push(name);
+			return Promise.resolve();
+		};
+		const busy = queue.add(() => gate.promise);
+		const done = [
+			queue.add(task('ahead 1'), { name: 'ahead 1', urgent: false }),
+			queue.add(task('ahead 2'), { name: 'ahead 2', urgent: false }),
+			queue.add(task('in sight'), { name: 'in sight' })
+		];
+		queue.hurry('ahead 2');
+		queue.hurry('not there');
+
+		gate.resolve();
+		await Promise.all([busy, ...done]);
+		expect(started).toEqual(['in sight', 'ahead 2', 'ahead 1']);
+	});
 });

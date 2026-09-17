@@ -2,6 +2,7 @@ import { packSettingsOf } from '@/engine';
 import type { Pack } from '@/engine';
 import type { KeyFailure } from '@/messages';
 // The types alone, and not `@/storage`: drawing the popup needs no Chrome, and so its tests need none either.
+import { MOST_AHEAD } from '@/storage/types';
 import type { ConnectionStatus, Counters, Settings } from '@/storage/types';
 import { onPackControl, packControls, toggle } from './pack-controls';
 import type { PackActions } from './pack-controls';
@@ -52,6 +53,7 @@ export interface PopupActions extends PackActions {
 	removeKey(): void;
 	setPaused(paused: boolean): void;
 	setTuning(tuning: boolean): void;
+	setLookAhead(items: number): void;
 	resetCounters(): void;
 	go(view: PopupState['view']): void;
 	/** Unfolds what a pack is about, or folds it back if it was the one unfolded. */
@@ -108,7 +110,7 @@ function keyForm({ form, connection }: PopupState, canCancel: boolean): string {
 
 /**
  * How things are analyzed on this page: the controls of its pack while it is on, the offer to turn
- * it on while it is off, and the tuning mode.
+ * it on while it is off, how far ahead of the user it reads, and the tuning mode.
  */
 function analysis({ settings, pack }: PopupState): string {
 	const chosen = pack && packSettingsOf(pack, settings.packs[pack.id]);
@@ -123,6 +125,8 @@ function analysis({ settings, pack }: PopupState): string {
 	}
 	return `<section class="row"><div class="eyebrow">${pack ? pack.name : texts.analysis}</div>
 		${ofThisPage}
+		<div class="inline"><label for="ahead"><div class="title">${texts.ahead.title}</div><p class="help">${texts.ahead.help}</p></label>
+			<input id="ahead" class="field count" type="number" min="0" max="${MOST_AHEAD}" step="1" value="${Number(settings.lookAhead) || 0}" title="${texts.ahead.none}" /></div>
 		<div class="inline"><div><div class="title">${texts.tuning.title}</div><p class="help">${texts.tuning.help}</p></div>
 			${toggle('tuning', settings.tuning, texts.tuning.title)}</div></section>`;
 }
@@ -175,6 +179,13 @@ export function renderPopup(root: HTMLElement, state: PopupState, actions: Popup
 	if (field) field.value = form.typed;
 
 	root.oninput = () => field && actions.typed(field.value);
+	root.onchange = (event) => {
+		const changed = event.target as HTMLInputElement;
+		if (changed.id !== 'ahead') return;
+		// Whatever is typed, a whole number of items within bounds.
+		const items = Math.round(Number(changed.value)) || 0;
+		actions.setLookAhead(Math.max(0, Math.min(MOST_AHEAD, items)));
+	};
 	root.onsubmit = (event) => {
 		event.preventDefault();
 		const apiKey = field?.value.trim();

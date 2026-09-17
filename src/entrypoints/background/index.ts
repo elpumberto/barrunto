@@ -13,7 +13,7 @@ export default defineBackground(() => {
 	browser.runtime.onStartup.addListener(() => {});
 
 	listen({
-		analyze: ({ packId, item }, from) => analyze(packId, item, from),
+		analyze: ({ packId, item, urgent }, from) => analyze(packId, item, from, urgent),
 		checkKey: ({ apiKey: candidate }) => checkKey(candidate),
 		forgetKey: async () => {
 			await apiKey.removeValue();

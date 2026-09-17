@@ -24,8 +24,14 @@ const actsOn = (pack: Pack, address: string) =>
 /**
  * The strengths of an item's judgments, asking Jev only if the session has no answers for it yet.
  * `from` is the address of the page that asks: a pack answers only for its own sites, and only while it is on.
+ * What is in front of the user is `urgent`, and goes ahead of what is being read ahead of them.
  */
-export async function analyze(packId: string, item: Item, from: string): Promise<Analysis> {
+export async function analyze(
+	packId: string,
+	item: Item,
+	from: string,
+	urgent = true
+): Promise<Analysis> {
 	const [key, { paused, packs }, status] = await Promise.all([
 		apiKey.getValue(),
 		settings.getValue(),
@@ -42,28 +48,44 @@ export async function analyze(packId: string, item: Item, from: string): Promise
 
 	const of = { packId: pack.id, wording: wordingOf(pack.rules.traits), itemId: item.id };
 	const stored = await storedAnswers(of);
-	const asked: Asked = stored ? { answers: stored } : await askOnce(key, pack, item, of);
+	const asked: Asked = stored ? { answers: stored } : await askOnce(key, pack, item, of, urgent);
 	if ('failure' in asked) return { analyzed: false, reason: asked.failure };
 	const { answers } = asked;
 	return { analyzed: true, strengths: strengthsFor(pack.rules, answers, item), answers };
 }
 
-/** Two tabs asking about the same item at once share a single call. */
-function askOnce(key: string, pack: Pack, item: Item, of: AnswersOf): Promise<Asked> {
+/**
+ * Two askings about the same item at once share a single call: two tabs, or a page that read an
+ * item ahead and now has the user in front of it, which hurries the call if it is still waiting.
+ */
+function askOnce(
+	key: string,
+	pack: Pack,
+	item: Item,
+	of: AnswersOf,
+	urgent: boolean
+): Promise<Asked> {
 	const name = `${of.packId}:${of.itemId}`;
 	let pending = asking.get(name);
+	if (pending && urgent) queue.hurry(name);
 	if (!pending) {
-		pending = ask(key, pack, item, of).finally(() => asking.delete(name));
+		pending = ask(key, pack, item, of, { name, urgent }).finally(() => asking.delete(name));
 		asking.set(name, pending);
 	}
 	return pending;
 }
 
 /** Jev's answers, stored and counted; or, if the call fails, the reason, noted in the connection status. */
-async function ask(key: string, { rules }: Pack, item: Item, of: AnswersOf): Promise<Asked> {
+async function ask(
+	key: string,
+	{ rules }: Pack,
+	item: Item,
+	of: AnswersOf,
+	turn: { name: string; urgent: boolean }
+): Promise<Asked> {
 	let asked;
 	try {
-		asked = await queue.add(() => jev.ask(key, rules.present(item), rules.traits));
+		asked = await queue.add(() => jev.ask(key, rules.present(item), rules.traits), turn);
 	} catch (error) {
 		const failure = error instanceof JevError ? error.failure : 'serviceDown';
 		if (failure === 'keyRejected') {

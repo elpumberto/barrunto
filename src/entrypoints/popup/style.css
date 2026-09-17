@@ -69,7 +69,7 @@ button {
 	display: flex;
 	align-items: center;
 	gap: 10px;
-	padding: 12px 16px;
+	padding: 10px 16px;
 	border-bottom: 1px solid var(--hairline);
 }
 
@@ -127,7 +127,7 @@ button {
 	flex-direction: column;
 	gap: 8px;
 	margin: 0;
-	padding: 12px 16px;
+	padding: 10px 16px;
 	border-bottom: 1px solid var(--hairline);
 }
 
@@ -415,7 +415,7 @@ button {
 .foot {
 	display: flex;
 	justify-content: flex-end;
-	padding: 9px 16px;
+	padding: 7px 16px;
 }
 
 .foot .link {
@@ -507,4 +507,16 @@ p.row {
 	.more::before {
 		transition: none;
 	}
+}
+
+/* A small number, such as how many items are read ahead. */
+.field.count {
+	flex: none;
+	width: 58px;
+	padding: 4px 6px;
+	text-align: right;
+}
+
+label {
+	cursor: pointer;
 }

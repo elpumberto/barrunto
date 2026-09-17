@@ -64,6 +64,7 @@ describe('what is chosen for a pack', () => {
 		expect(await settings.getValue()).toEqual({
 			paused: true,
 			tuning: false,
+			lookAhead: 3,
 			packs: { x: { enabled: true, sensitivity: 'high', options: {} } }
 		});
 		expect(await totalCounters.getValue()).toEqual({ items: 7, tokensIn: 70, tokensOut: 7 });

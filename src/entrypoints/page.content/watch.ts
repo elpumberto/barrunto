@@ -6,7 +6,7 @@ import type { Analysis } from '@/messages';
 import { connection, pageSettings } from '@/storage/session';
 import type { ConnectionStatus, Settings } from '@/storage/types';
 import { ground } from './ground';
-import { clearTuning, paintLabels, paintTuning } from './paint';
+import { clearTuning, paintLabels, paintTuning, paintWaiting } from './paint';
 import { tuningFor } from './tuning';
 
 /** How much of an item has to show, or of the screen it has to fill when it is taller than the screen. */
@@ -37,12 +37,21 @@ const IN_WORDS: Record<string, string> = {
 	extensionReloaded: 'the extension was reloaded'
 };
 
-/** An item's element on the page: which item it shows, whether it has been asked about, and what came of it. */
+/**
+ * An item's element on the page: which item it shows, whether it has been asked about, and what
+ * came of it. While the answer is on its way, `waitingFor` is the item asked about and `urgent`
+ * says whether it was asked as something in front of the user or as something read ahead of them.
+ */
 interface Tracked {
 	id: string | null;
 	asked: boolean;
+	waitingFor?: Item;
+	urgent?: boolean;
 	outcome?: Outcome;
 }
+
+/** Whether the page draws the element at all: a comment folded away with its thread is there, and is not. */
+const drawn = (element: HTMLElement) => element.checkVisibility?.() ?? true;
 
 const analyzed = (outcome: Outcome | undefined) =>
 	outcome !== undefined && 'item' in outcome && outcome.analysis.analyzed;
@@ -65,6 +74,9 @@ export async function watchPage(ctx: ContentScriptContext, pack: Pack, page: Pag
 	/** What came of each analyzed item, by id, for when the page draws it again. The oldest go first. */
 	const remembered = new Map<string, Outcome>();
 	const dwelling = new Map<HTMLElement, number>();
+	/** The items the browser is told about, and the ones of them that show on screen, however little. */
+	const watched = new Set<HTMLElement>();
+	const inSight = new Set<HTMLElement>();
 
 	let connectionStatus = await connectionNow();
 	let currentSettings: Settings = await pageSettings.getValue();
@@ -114,9 +126,24 @@ export async function watchPage(ctx: ContentScriptContext, pack: Pack, page: Pag
 		}
 	}
 
-	async function look(article: HTMLElement) {
+	/** Has an item analyzed, once. `urgent`: it is in front of the user, and not being read ahead of them. */
+	async function look(article: HTMLElement, urgent: boolean) {
 		const known = tracked.get(article);
-		if (!known || known.asked || !reading() || ctx.isInvalid) return;
+		if (!known || !reading() || ctx.isInvalid) return;
+		if (known.asked) {
+			// The user has caught up with an item read ahead whose answer is still on its way: it goes first now.
+			if (urgent && known.waitingFor && !known.urgent) {
+				known.urgent = true;
+				const hurried = {
+					type: 'analyze',
+					packId: pack.id,
+					item: known.waitingFor,
+					urgent
+				} as const;
+				send(hurried).catch(() => {});
+			}
+			return;
+		}
 
 		const read = page.read(article);
 		if (!read) {
@@ -130,10 +157,18 @@ export async function watchPage(ctx: ContentScriptContext, pack: Pack, page: Pag
 			outcome = read;
 		} else {
 			const { item } = read;
-			outcome = await send({ type: 'analyze', packId: pack.id, item }).then(
+			known.waitingFor = item;
+			known.urgent = urgent;
+			try {
+				paintWaiting(page.labelAnchor(article), page.labelPlace);
+			} catch (error) {
+				console.error('[barrunto] could not paint an item', error);
+			}
+			outcome = await send({ type: 'analyze', packId: pack.id, item, urgent }).then(
 				(analysis): Outcome => (analysis ? { item, analysis } : { failed: 'noReply' }),
 				(): Outcome => ({ failed: 'extensionReloaded' })
 			);
+			known.waitingFor = undefined;
 			if (analyzed(outcome)) remember(item.id, outcome);
 		}
 		// The page may have given the element to another item while Jev was answering.
@@ -142,12 +177,31 @@ export async function watchPage(ctx: ContentScriptContext, pack: Pack, page: Pag
 		paint(article, outcome, true);
 	}
 
+	/**
+	 * Reading ahead: what shows on screen is asked about at once, and so are the next few items past
+	 * the last of them, so that their labels are there by the time the user is. With nothing to read
+	 * ahead, an item is asked about only once it has dwelt on screen, and this does nothing.
+	 */
+	function readAhead() {
+		const ahead = currentSettings.lookAhead;
+		if (!ahead || !reading()) return;
+		const items = page.find(document).filter(drawn);
+		const last = items.findLastIndex((item) => inSight.has(item));
+		if (last < 0) return;
+		for (const item of items) if (inSight.has(item)) void look(item, true);
+		for (const item of items.slice(last + 1, last + 1 + ahead)) void look(item, false);
+	}
+
 	const onScreen = new IntersectionObserver(
 		(entries) => {
 			for (const { target, intersectionRatio, intersectionRect, rootBounds } of entries) {
 				const article = target as HTMLElement;
+				if (intersectionRatio > 0) inSight.add(article);
+				else inSight.delete(article);
+
 				window.clearTimeout(dwelling.get(article));
 				dwelling.delete(article);
+				if (currentSettings.lookAhead || tracked.get(article)?.asked) continue;
 
 				// An item taller than the screen never shows half of itself: filling half the screen does.
 				const fillsScreen = intersectionRect.height >= (rootBounds?.height ?? Infinity) * IN_VIEW;
@@ -155,12 +209,12 @@ export async function watchPage(ctx: ContentScriptContext, pack: Pack, page: Pag
 				dwelling.set(
 					article,
 					window.setTimeout(() => {
-						onScreen.unobserve(article);
 						dwelling.delete(article);
-						void look(article);
+						void look(article, true);
 					}, page.dwellMs)
 				);
 			}
+			readAhead();
 		},
 		{ threshold: [0, 0.1, 0.25, IN_VIEW] }
 	);
@@ -180,8 +234,20 @@ export async function watchPage(ctx: ContentScriptContext, pack: Pack, page: Pag
 				tracked.set(article, mine);
 				if (outcome) paint(article, outcome, false);
 			}
-			if (!mine.asked && reading()) onScreen.observe(article);
+			if (reading() && !watched.has(article)) {
+				watched.add(article);
+				onScreen.observe(article);
+			}
 		}
+		// The browser is told about every item, asked about or not, to know which is the last in
+		// sight; the ones the page has taken away are let go of.
+		for (const article of watched) {
+			if (article.isConnected) continue;
+			watched.delete(article);
+			inSight.delete(article);
+			onScreen.unobserve(article);
+		}
+		readAhead();
 	}
 
 	function repaint() {
@@ -222,6 +288,8 @@ export async function watchPage(ctx: ContentScriptContext, pack: Pack, page: Pag
 		} else {
 			changes.disconnect();
 			onScreen.disconnect();
+			watched.clear();
+			inSight.clear();
 			for (const timer of dwelling.values()) window.clearTimeout(timer);
 			dwelling.clear();
 		}
@@ -232,6 +300,7 @@ export async function watchPage(ctx: ContentScriptContext, pack: Pack, page: Pag
 			currentSettings = next;
 			startOrStop();
 			repaint();
+			readAhead();
 		}),
 		connection.watch((next) => {
 			connectionStatus = next;

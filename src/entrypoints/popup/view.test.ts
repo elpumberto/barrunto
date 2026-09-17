@@ -9,6 +9,7 @@ const connected: PopupState = {
 	settings: {
 		paused: false,
 		tuning: false,
+		lookAhead: 10,
 		packs: { x: { enabled: true, sensitivity: 'medium', options: {} } }
 	},
 	packs: [x, hn],
@@ -31,6 +32,7 @@ const actions = {
 	setSensitivity: vi.fn(),
 	setOption: vi.fn(),
 	setTuning: vi.fn(),
+	setLookAhead: vi.fn(),
 	resetCounters: vi.fn(),
 	go: vi.fn(),
 	showAbout: vi.fn(),
@@ -123,6 +125,23 @@ describe('the popup', () => {
 		expect(root.textContent).toContain('There is no rule pack for this page');
 		draw({ pack: null, settings: { ...connected.settings, packs: {} } });
 		expect(root.querySelector('.warning')!.textContent).toContain('No rule pack is on');
+	});
+
+	it('takes how many items to read ahead as a whole number within bounds', () => {
+		draw({});
+		const ahead = root.querySelector<HTMLInputElement>('#ahead')!;
+		expect(ahead.value).toBe('10');
+		for (const [typed, taken] of [
+			['0', 0],
+			['3.6', 4],
+			['900', 50],
+			['-2', 0],
+			['x', 0]
+		] as const) {
+			ahead.value = typed;
+			ahead.dispatchEvent(new Event('change', { bubbles: true }));
+			expect(actions.setLookAhead).toHaveBeenLastCalledWith(taken);
+		}
 	});
 
 	it('lets a change of key be backed out of, and locks the form while checking', () => {

@@ -68,6 +68,11 @@ export const texts = {
 		tokensOut: 'Tokens out',
 		reset: 'Reset counters'
 	},
+	ahead: {
+		title: 'Read ahead',
+		help: 'Items read before you get to them.',
+		none: 'With 0, Barrunto asks only about what stays on screen for a moment.'
+	},
 	tuning: {
 		title: 'Tuning mode',
 		help: "Shows Jev's answers on the page."

@@ -49,6 +49,7 @@ const chosen = (
 ): Settings => ({
 	paused: false,
 	tuning: false,
+	lookAhead: 0,
 	packs: { x: { enabled: true, sensitivity, options: {} } },
 	...change
 });
@@ -67,6 +68,8 @@ const labelsOn = (article: HTMLElement) =>
 			.querySelector('[data-barrunto="labels"]')
 			?.shadowRoot?.querySelectorAll<HTMLElement>('.label') ?? [])
 	].map((label) => label.dataset.id);
+
+type AnalyzeMessage = { item: { id: string }; urgent: boolean };
 
 const strengths = (flame: number): Analysis => ({
 	analyzed: true,
@@ -168,8 +171,67 @@ describe('watching the page', () => {
 
 		await pageSettings.setValue(chosen());
 		await settle();
-		expect(OnScreen.last.watched.has(failed)).toBe(true);
-		expect(OnScreen.last.watched.has(painted)).toBe(false);
+		vi.mocked(send).mockResolvedValueOnce(strengths(0.9));
+		OnScreen.last.show(painted, 1);
+		OnScreen.last.show(failed, 1);
+		await vi.advanceTimersByTimeAsync(DWELL);
+		expect(send).toHaveBeenCalledTimes(3);
+		expect(labelsOn(failed)).toEqual(['flame']);
+	});
+
+	it('with items to read ahead, asks at once about what is in sight and the next few, and no further', async () => {
+		vi.mocked(send).mockResolvedValue(strengths(0));
+		const posts = ['10', '11', '12', '13', '14'].map(addPost);
+		await pageSettings.setValue(chosen({ lookAhead: 2 }));
+		await watchPage(ctx);
+		OnScreen.last.show(posts[0]!, 0.2);
+		await settle();
+
+		const asked = vi.mocked(send).mock.calls.map(([message]) => message as AnalyzeMessage);
+		expect(asked.map((m) => [m.item.id, m.urgent])).toEqual([
+			['10', true],
+			['11', false],
+			['12', false]
+		]);
+
+		OnScreen.last.show(posts[0]!, 0);
+		OnScreen.last.show(posts[1]!, 1);
+		await settle();
+		expect(vi.mocked(send).mock.calls.map(([m]) => (m as AnalyzeMessage).item.id)).toEqual([
+			'10',
+			'11',
+			'12',
+			'13'
+		]);
+	});
+
+	it('says it is waiting for Jev, and hurries an item read ahead when the user gets to it', async () => {
+		let answer!: (analysis: Analysis) => void;
+		vi.mocked(send).mockReturnValue(new Promise((resolve) => (answer = resolve as typeof answer)));
+		const [first, second] = ['20', '21'].map(addPost);
+		await pageSettings.setValue(chosen({ lookAhead: 1 }));
+		await watchPage(ctx);
+		OnScreen.last.show(first!, 1);
+		await settle();
+		const waiting = (article: HTMLElement) =>
+			article.querySelector('[data-barrunto="labels"]')?.shadowRoot?.querySelector('.waiting');
+		expect(waiting(second!)).not.toBeNull();
+		expect(send).toHaveBeenCalledTimes(2);
+
+		OnScreen.last.show(second!, 1);
+		await settle();
+		expect(send).toHaveBeenCalledTimes(3);
+		expect(send).toHaveBeenLastCalledWith(
+			expect.objectContaining({ item: expect.objectContaining({ id: '21' }), urgent: true })
+		);
+		OnScreen.last.show(second!, 1);
+		await settle();
+		expect(send).toHaveBeenCalledTimes(3);
+
+		answer(strengths(0.9));
+		await settle();
+		expect(waiting(second!)).toBeNull();
+		expect(labelsOn(second!)).toEqual(['flame']);
 	});
 
 	it('lets go of the page when its pack is turned off', async () => {

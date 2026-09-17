@@ -8,7 +8,7 @@ import type { Counters, Sensitivity, Settings } from './types';
 // closes it to the content script inside a page, which must not so much as load this file:
 // an item looks itself up as soon as it is defined.
 
-export const defaultSettings: Settings = { paused: false, tuning: false, packs: {} };
+export const defaultSettings: Settings = { paused: false, tuning: false, lookAhead: 3, packs: {} };
 export const noCounters: Counters = { items: 0, tokensIn: 0, tokensOut: 0 };
 
 /** Settings as Barrunto 1 kept them, when X.com was all there was. */
@@ -25,13 +25,17 @@ export const apiKey = storage.defineItem<string | null>('local:key', {
 
 export const settings = storage.defineItem<Settings>('local:settings', {
 	fallback: defaultSettings,
-	version: 2,
+	version: 3,
 	migrations: {
 		// X.com stays on for whoever had it, with the sensitivity they had chosen.
-		2: ({ paused, sensitivity, tuning }: SettingsV1): Settings => ({
+		2: ({ paused, sensitivity, tuning }: SettingsV1): Omit<Settings, 'lookAhead'> => ({
 			paused,
 			tuning,
 			packs: { x: { enabled: true, sensitivity, options: {} } }
+		}),
+		3: (before: Omit<Settings, 'lookAhead'>): Settings => ({
+			...before,
+			lookAhead: defaultSettings.lookAhead
 		})
 	}
 });
