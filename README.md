@@ -22,7 +22,7 @@ Or build it yourself, with Node 22 or later:
     npm install
     npm run build
 
-and load the `.output/chrome-mv3` folder the same way. What each version brings, and what to do after updating to it, is in the [changelog](CHANGELOG.md). After building again, press the reload arrow on Barrunto's card; the tabs it reads pick the new build up by themselves.
+and load the `.output/chrome-mv3` folder the same way. Its name starts with a dot, so the window that picks a folder may hide it: Ctrl+H shows it on Linux, Cmd+Shift+. on a Mac. What each version brings, and what to do after updating to it, is in the [changelog](CHANGELOG.md). After building again, press the reload arrow on Barrunto's card; the tabs it reads pick the new build up by themselves.
 
 ## Using it
 
