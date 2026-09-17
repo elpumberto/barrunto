@@ -32,7 +32,7 @@ From then on labels turn up on their own as you read; hover over one to see what
 
 Each pack has its **sensitivity**: on *Low* only the clear cases get a label, and each step up labels more and gets more wrong, up to *Ultra*, which labels at the faintest hunch. Moving it asks Jev nothing: the answers are already there. A pack can bring controls of its own: Hacker News can fade the comments it labels Snark or Tangent. A pack's controls are in the Rule packs page and, over a page of that pack, in the popup.
 
-In the popup you can also pause Barrunto and see how much it has analyzed and how many tokens that took.
+The popup is built around the page it is opened over: the switch at the top pauses Barrunto, then come how things are analyzed (the controls of that page's pack, and tuning mode) and what goes on with Jev: the key, and how much has been analyzed and the tokens that took, folded to a line.
 
 **Tuning mode** shows under each post or comment what Jev answered to every question and how each judgment added up. It is the way to see why something got the label it got, and the tool for adjusting the questions and the recipes.
 

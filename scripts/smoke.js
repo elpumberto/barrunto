@@ -74,7 +74,7 @@ try {
 	await popup.type('#key', 'any-key-1234');
 	await popup.click('.go');
 	await popup.waitForSelector('.counters');
-	assert.match(await popup.$eval('.key span', (el) => el.textContent), /1234$/);
+	assert.match(await popup.$eval('.key .tail', (el) => el.textContent), /1234$/);
 	assert.match(await popup.$eval('.warning', (el) => el.textContent), /No rule pack is on/);
 
 	// Nothing acts anywhere until its pack is turned on, in the packs page.

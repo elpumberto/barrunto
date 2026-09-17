@@ -6,7 +6,7 @@ export const controls: Control[] = [
 	{
 		id: FADE,
 		title: 'Fade the noise',
-		help: 'Dims comments labelled Snark or Tangent. They stay readable.',
+		help: 'Dims Snark and Tangent comments.',
 		initial: false
 	}
 ];

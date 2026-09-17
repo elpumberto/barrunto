@@ -42,13 +42,3 @@ export function onPackControl(button: HTMLElement | null, actions: PackActions):
 	} else return false;
 	return true;
 }
-
-/** What has the focus inside `root`, in a form that survives a redraw. */
-export function focusedIn(root: HTMLElement): string | null {
-	const el = root.contains(document.activeElement) ? (document.activeElement as HTMLElement) : null;
-	if (!el) return null;
-	if (el.id) return `#${el.id}`;
-	const { action, pack, value } = el.dataset;
-	if (!action) return null;
-	return `[data-action="${action}"]${pack ? `[data-pack="${pack}"]` : ''}${value ? `[data-value="${value}"]` : ''}`;
-}

@@ -4,8 +4,9 @@ import type { Label, Pack } from '@/engine';
 import type { ConnectionStatus, Settings } from '@/storage/types';
 import eyebrow from '@/assets/icon.svg?raw';
 import wordmark from '@/assets/wordmark.svg?raw';
-import { focusedIn, onPackControl, packControls, toggle } from '@/ui/pack-controls';
+import { onPackControl, packControls, toggle } from '@/ui/pack-controls';
 import type { PackActions } from '@/ui/pack-controls';
+import { redraw } from '@/ui/redraw';
 import { texts } from './texts';
 
 export interface OptionsState {
@@ -49,14 +50,13 @@ export function renderOptions(
 	state: OptionsState,
 	actions: OptionsActions
 ): void {
-	const focused = focusedIn(root);
-	root.innerHTML = `<header class="head"><span class="icon">${eyebrow}</span><span class="wordmark" role="img" aria-label="Barrunto">${wordmark}</span>
+	const html = `<header class="head"><span class="icon">${eyebrow}</span><span class="wordmark" role="img" aria-label="Barrunto">${wordmark}</span>
 			<span class="status">${texts.title}</span></header>
 		<p class="intro">${texts.intro}</p>
 		${state.connection.state === 'noKey' ? `<p class="band">${texts.noKey}</p>` : ''}
 		${state.packs.map((pack) => card(pack, state)).join('')}
-		<p class="help foot">${texts.reload}</p>`;
-	if (focused) root.querySelector<HTMLElement>(focused)?.focus();
+		<p class="help">${texts.reload}</p>`;
+	redraw(root, html);
 
 	root.onclick = (event) => {
 		const button = (event.target as Element).closest<HTMLElement>('[data-action]');

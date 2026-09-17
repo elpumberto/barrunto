@@ -14,6 +14,7 @@ export const texts = {
 		trouble: 'Trouble'
 	},
 	key: {
+		title: 'Key',
 		label: 'Your TypeSafe key',
 		placeholder: 'Paste it here',
 		connect: 'Connect',
@@ -29,16 +30,19 @@ export const texts = {
 			serviceDown: 'TypeSafe is not answering right now. Try again in a moment.'
 		} satisfies Record<KeyFailure, string>
 	},
-	reading: {
-		on: { title: 'Reading', help: 'Asks Jev once about each thing it reads.' },
-		off: { title: 'Paused', help: 'Reads nothing, asks nothing. Labels already up stay.' }
-	},
+	/** The names of the two blocks; the first takes the name of the pack of the page, when there is one. */
+	analysis: 'Analysis',
+	api: 'Jev API',
+	/** What the switch at the top is called. */
+	reading: 'Reading',
 	packs: {
 		open: 'Rule packs',
 		noneOn: 'No rule pack is on, so Barrunto reads nothing. Choose where it should act.',
 		notHere: 'No rule pack is on for this page.'
 	},
 	counters: {
+		title: 'Usage',
+		brief: (items: string, tokens: string) => `${items} analyzed · ${tokens} tokens`,
 		session: 'This session',
 		total: 'Total',
 		items: 'Analyzed',
@@ -48,7 +52,7 @@ export const texts = {
 	},
 	tuning: {
 		title: 'Tuning mode',
-		help: 'Shows trait answers and strengths under each thing it reads.'
+		help: "Shows Jev's answers on the page."
 	},
 	trouble: {
 		tooManyCalls: `Jev is asking Barrunto to slow down. ${meanwhile}`,

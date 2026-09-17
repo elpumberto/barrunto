@@ -80,7 +80,10 @@ describe('the popup', () => {
 		draw({});
 		expect(status()).toBe('Connected');
 		expect(root.querySelector('.counters')!.textContent).toContain('1.3K');
-		expect(root.querySelector('.key span')!.textContent).toBe('Key ts_••••••4f2a');
+		expect(root.querySelector('[data-fold="usage"] .brief')!.textContent).toBe(
+			'7 analyzed · 2K tokens'
+		);
+		expect(root.querySelector('.key .tail')!.textContent).toBe('ts_••••••4f2a');
 		expect(root.querySelector('[aria-pressed="true"]')!.textContent).toBe('Medium');
 	});
 
@@ -173,9 +176,18 @@ describe('the popup', () => {
 		expect(actions.typed).toHaveBeenCalledWith('abc');
 	});
 
+	it('keeps a fold open across a redraw', () => {
+		draw({});
+		const usage = () => root.querySelector<HTMLDetailsElement>('details[data-fold="usage"]')!;
+		expect(usage().open).toBe(false);
+		usage().open = true;
+		draw({ session: { items: 8, tokensIn: 2000, tokensOut: 100 } });
+		expect(usage().open).toBe(true);
+	});
+
 	it('never takes the key tail for markup', () => {
 		draw({ keyTail: '<b>x' });
 		expect(root.querySelector('.key b')).toBeNull();
-		expect(root.querySelector('.key span')!.textContent).toContain('<b>x');
+		expect(root.querySelector('.key .tail')!.textContent).toContain('<b>x');
 	});
 });

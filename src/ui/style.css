@@ -69,7 +69,7 @@ button {
 	display: flex;
 	align-items: center;
 	gap: 10px;
-	padding: 14px 16px;
+	padding: 12px 16px;
 	border-bottom: 1px solid var(--hairline);
 }
 
@@ -127,7 +127,7 @@ button {
 	flex-direction: column;
 	gap: 8px;
 	margin: 0;
-	padding: 14px 16px;
+	padding: 12px 16px;
 	border-bottom: 1px solid var(--hairline);
 }
 
@@ -223,53 +223,37 @@ button {
 	}
 }
 
+/* The sensitivity: four stops in one line, the chosen one filled. */
 .stops {
-	position: relative;
 	display: grid;
 	grid-template-columns: repeat(4, 1fr);
-	padding-top: 4px;
-}
-
-.stops::before {
-	content: '';
-	position: absolute;
-	top: 12px;
-	right: 12.5%;
-	left: 12.5%;
-	height: 2px;
-	background: var(--hairline);
+	border: 1px solid var(--hairline);
+	border-radius: 6px;
+	background: var(--ground);
+	overflow: hidden;
 }
 
 .stops button {
-	position: relative;
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 6px;
-	padding: 0;
+	padding: 5px 0;
 	border: 0;
+	border-left: 1px solid var(--hairline);
 	background: none;
 	color: var(--ink-2);
 	font-size: 13px;
 }
 
-.stops button::before {
-	content: '';
-	width: 16px;
-	height: 16px;
-	border: 2px solid var(--hairline);
-	border-radius: 50%;
-	background: var(--surface);
+.stops button:first-child {
+	border-left: 0;
 }
 
 .stops button[aria-pressed='true'] {
-	color: var(--ink);
+	background: var(--indigo);
+	color: var(--on-indigo);
 	font-weight: 700;
 }
 
-.stops button[aria-pressed='true']::before {
-	border-color: var(--indigo);
-	background: var(--indigo);
+.stops button:focus-visible {
+	outline-offset: -2px;
 }
 
 .counters {
@@ -304,7 +288,12 @@ button {
 	font: 13px var(--mono);
 }
 
-.key span {
+.key .title {
+	font-family: system-ui, sans-serif;
+	font-size: 14px;
+}
+
+.key .tail {
 	margin-right: auto;
 }
 
@@ -370,4 +359,72 @@ button {
 	width: 11px;
 	height: 11px;
 	flex: none;
+}
+
+/* A part folded to one line: its title, what it holds in brief, and a mark that turns when it opens. */
+.fold summary {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 2px 0;
+	cursor: pointer;
+	list-style: none;
+}
+
+.fold summary::-webkit-details-marker {
+	display: none;
+}
+
+.fold summary::before {
+	content: '';
+	width: 6px;
+	height: 6px;
+	border-right: 2px solid var(--ink-2);
+	border-bottom: 2px solid var(--ink-2);
+	transform: rotate(-45deg);
+	transition: transform 0.15s;
+}
+
+.fold[open] summary::before {
+	transform: rotate(45deg);
+}
+
+.fold summary:focus-visible {
+	outline-offset: -2px;
+}
+
+.brief {
+	margin-left: auto;
+	color: var(--ink-2);
+	font-size: 13px;
+	font-variant-numeric: tabular-nums;
+}
+
+/* Open, the line above already says it. */
+.fold[open] .brief {
+	visibility: hidden;
+}
+
+.folded {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 8px 0 0 14px;
+}
+
+.foot {
+	display: flex;
+	justify-content: flex-end;
+	padding: 9px 16px;
+}
+
+.foot .link {
+	font-size: 13px;
+	text-decoration: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.fold summary::before {
+		transition: none;
+	}
 }

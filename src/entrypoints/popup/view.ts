@@ -3,10 +3,11 @@ import type { Pack } from '@/engine';
 import type { KeyFailure } from '@/messages';
 // The types alone, and not `@/storage`: drawing the popup needs no Chrome, and so its tests need none either.
 import type { ConnectionStatus, Counters, Settings } from '@/storage/types';
-import { focusedIn, onPackControl, packControls, toggle } from '@/ui/pack-controls';
+import { onPackControl, packControls, toggle } from '@/ui/pack-controls';
 import type { PackActions } from '@/ui/pack-controls';
 import eyebrow from '@/assets/icon.svg?raw';
 import wordmark from '@/assets/wordmark.svg?raw';
+import { fold, redraw } from '@/ui/redraw';
 import { texts } from './texts';
 
 /** Everything the popup shows. The stored part comes from storage; the key form's part is the popup's own. */
@@ -74,10 +75,12 @@ function statusOf({ connection, settings, form }: PopupState): [dot: string, wor
 	return ['good', texts.status.connected];
 }
 
-function head(state: PopupState): string {
+/** The brand, how things stand and, once there is a key, the switch that pauses it all. */
+function head(state: PopupState, withSwitch: boolean): string {
 	const [dot, word] = statusOf(state);
 	return `<header class="head"><span class="icon">${eyebrow}</span><span class="wordmark" role="img" aria-label="Barrunto">${wordmark}</span>
-		<span class="status"><span class="dot ${dot}"></span>${word}</span></header>`;
+		<span class="status"><span class="dot ${dot}"></span>${word}</span>
+		${withSwitch ? toggle('pause', !state.settings.paused, texts.reading) : ''}</header>`;
 }
 
 function keyForm({ form, connection }: PopupState, canCancel: boolean): string {
@@ -93,35 +96,46 @@ function keyForm({ form, connection }: PopupState, canCancel: boolean): string {
 	</form>`;
 }
 
-/** The controls of the pack that acts on this page, while it is on; or where to go to turn one on. */
-function packRow({ settings, pack }: PopupState): string {
+/** How things are analyzed: the controls of the pack that acts on this page, while it is on, and the tuning mode. */
+function analysis({ settings, pack }: PopupState): string {
 	const chosen = pack && packSettingsOf(pack, settings.packs[pack.id]);
-	if (pack && chosen?.enabled) {
-		return `<section class="row"><div class="eyebrow">${pack.name}</div>${packControls(pack, chosen)}</section>`;
-	}
 	const anyOn = Object.values(settings.packs).some((p) => p.enabled);
-	return `<section class="row"><p class="${anyOn ? 'help' : 'warning'}">${anyOn ? texts.packs.notHere : texts.packs.noneOn}</p></section>`;
+	const ofThisPage =
+		pack && chosen?.enabled
+			? packControls(pack, chosen)
+			: `<p class="${anyOn ? 'help' : 'warning'}">${anyOn ? texts.packs.notHere : texts.packs.noneOn}</p>`;
+	return `<section class="row"><div class="eyebrow">${pack && chosen?.enabled ? pack.name : texts.analysis}</div>
+		${ofThisPage}
+		<div class="inline"><div><div class="title">${texts.tuning.title}</div><p class="help">${texts.tuning.help}</p></div>
+			${toggle('tuning', settings.tuning, texts.tuning.title)}</div></section>`;
 }
 
-function working(state: PopupState): string {
-	const { connection, settings, session, total, keyTail } = state;
-	const reading = settings.paused ? texts.reading.off : texts.reading.on;
+/** What goes on with Jev: what asking has taken, folded to a line, and the key it is asked with. */
+function api({ session, total, keyTail }: PopupState): string {
 	const counter = (name: string, key: keyof Counters) =>
 		`<tr><td>${name}</td><td>${compact(session[key])}</td><td>${compact(total[key])}</td></tr>`;
+	const usage = `<table class="counters">
+			<tr><th></th><th>${texts.counters.session}</th><th>${texts.counters.total}</th></tr>
+			${counter(texts.counters.items, 'items')}${counter(texts.counters.tokensIn, 'tokensIn')}${counter(texts.counters.tokensOut, 'tokensOut')}</table>
+		<button class="link end" type="button" data-action="reset">${texts.counters.reset}</button>`;
+	const brief = texts.counters.brief(
+		compact(session.items),
+		compact(session.tokensIn + session.tokensOut)
+	);
+	return `<section class="row"><div class="eyebrow">${texts.api}</div>
+		${fold('usage', texts.counters.title, brief, usage)}
+		<div class="key"><span class="title">${texts.key.title}</span><span class="tail">ts_••••••${escapeHtml(keyTail)}</span>
+			<button class="link" type="button" data-action="change">${texts.key.change}</button>
+			<button class="link" type="button" data-action="remove">${texts.key.remove}</button></div></section>`;
+}
+
+/** Two blocks: how things are analyzed on this page, and what goes on with Jev. */
+function working(state: PopupState): string {
+	const { connection } = state;
 	return `${connection.state === 'trouble' ? `<p class="band">${texts.trouble[connection.reason]}</p>` : ''}
-	<section class="row inline"><div><div class="title">${reading.title}</div><p class="help">${reading.help}</p></div>
-		${toggle('pause', !settings.paused, texts.reading.on.title)}</section>
-	${packRow(state)}
-	<section class="row"><table class="counters">
-		<tr><th></th><th>${texts.counters.session}</th><th>${texts.counters.total}</th></tr>
-		${counter(texts.counters.items, 'items')}${counter(texts.counters.tokensIn, 'tokensIn')}${counter(texts.counters.tokensOut, 'tokensOut')}</table>
-		<button class="link end" type="button" data-action="reset">${texts.counters.reset}</button></section>
-	<section class="row"><div class="key"><span>Key ts_••••••${escapeHtml(keyTail)}</span>
-		<button class="link" type="button" data-action="change">${texts.key.change}</button>
-		<button class="link" type="button" data-action="remove">${texts.key.remove}</button></div></section>
-	<section class="row inline"><div><div class="title">${texts.tuning.title}</div><p class="help">${texts.tuning.help}</p></div>
-		${toggle('tuning', settings.tuning, texts.tuning.title)}</section>
-	<section class="row"><button class="link" type="button" data-action="packs">${texts.packs.open}</button></section>`;
+	${analysis(state)}
+	${api(state)}
+	<footer class="foot"><button class="link" type="button" data-action="packs">${texts.packs.open} →</button></footer>`;
 }
 
 /**
@@ -132,13 +146,11 @@ function working(state: PopupState): string {
 export function renderPopup(root: HTMLElement, state: PopupState, actions: PopupActions): void {
 	const { connection, settings, form } = state;
 	const needsKey = connection.state === 'noKey' || connection.state === 'keyRejected';
-	const focused = focusedIn(root);
-	root.innerHTML =
-		head(state) + (needsKey || form.open ? keyForm(state, !needsKey) : working(state));
+	const asksKey = needsKey || form.open;
+	redraw(root, head(state, !asksKey) + (asksKey ? keyForm(state, !needsKey) : working(state)));
 
 	const field = root.querySelector<HTMLInputElement>('#key');
 	if (field) field.value = form.typed;
-	if (focused) root.querySelector<HTMLElement>(focused)?.focus();
 
 	root.oninput = () => field && actions.typed(field.value);
 	root.onsubmit = (event) => {
