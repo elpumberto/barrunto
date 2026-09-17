@@ -23,9 +23,14 @@ function failureOf(error: unknown): JevFailure {
 	return 'serviceDown';
 }
 
-/** A request Jev could not make sense of is a fault of Barrunto's, and worth seeing. Never the body: it may echo a post. */
+/**
+ * A request Jev could not make sense of is a fault of Barrunto's, and worth seeing. Never the body:
+ * it may echo a post. A key turned down or too many calls are no fault of the code: the popup tells
+ * of them, and Chrome would list them among the extension's errors.
+ */
 function report(error: unknown): void {
 	if (error instanceof APIError && error.status >= 500) return;
+	if (failureOf(error) === 'keyRejected' || failureOf(error) === 'tooManyCalls') return;
 	const status = error instanceof APIError ? error.status : '';
 	console.error('[barrunto] Jev:', status, error instanceof Error ? error.message : error);
 }
