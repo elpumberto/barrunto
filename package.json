@@ -1,0 +1,42 @@
+{
+	"name": "barrunto",
+	"description": "Reads posts on X.com as you browse, asks Jev about each one and hangs a label on it when it has something clear to say.",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"engines": {
+		"node": ">=20"
+	},
+	"scripts": {
+		"dev": "wxt",
+		"build": "wxt build",
+		"build:stand-in": "WXT_STAND_IN=1 wxt build",
+		"zip": "wxt zip",
+		"icons": "node scripts/cut-icons.js",
+		"test": "vitest run",
+		"smoke": "WXT_STAND_IN=1 wxt build && node scripts/smoke.js",
+		"check": "tsc --noEmit",
+		"lint": "eslint . && prettier --check .",
+		"verify": "npm run check && npm run lint && npm test && npm run smoke && npm run build",
+		"format": "prettier --write .",
+		"postinstall": "wxt prepare"
+	},
+	"devDependencies": {
+		"@eslint/js": "^10.0.1",
+		"eslint": "^10.10.0",
+		"eslint-config-prettier": "^10.1.8",
+		"happy-dom": "^20.14.5",
+		"prettier": "^3.9.7",
+		"puppeteer-core": "^25.11.0",
+		"sharp": "^0.35.4",
+		"typescript": "^6.0.3",
+		"typescript-eslint": "^8.70.0",
+		"vite": "^8.3.0",
+		"vitest": "^5.0.1",
+		"wxt": "^0.21.4"
+	},
+	"dependencies": {
+		"@typesafe-ai/sdk": "^0.6.0"
+	},
+	"license": "MIT"
+}

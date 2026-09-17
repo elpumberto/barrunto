@@ -1,0 +1,100 @@
+import { describe, expect, it } from 'vitest';
+import { clears, contributions, labelsFor, strength, strengthsFor } from '.';
+import type { Judgment, Post, Rules } from '.';
+
+const post: Post = {
+	id: '1',
+	text: 'made up',
+	author: { name: 'Nobody', handle: '@nobody' },
+	metrics: { replies: 10, reposts: 0, likes: 0 },
+	hasMedia: false,
+	hasLink: false,
+	inThread: false,
+	isCutShort: false,
+	quoted: null
+};
+
+const judgment = (id: string, recipe: Judgment['recipe']): Judgment => ({
+	id,
+	recipe,
+	thresholds: { low: 0.75, medium: 0.6, high: 0.45, ultra: 0.3 },
+	label: { text: id, hint: '', glyph: '', color: '#000', ink: '#fff' }
+});
+
+const rules: Rules = {
+	doubt: 0,
+	present: (p) => p.text,
+	traits: [],
+	signals: [{ id: 'loud', name: 'loud', from: (p) => p.metrics.replies }],
+	judgments: [
+		judgment('a', [
+			{ kind: 'trait', id: 'x', weight: 0.5 },
+			{ kind: 'trait', id: 'y', weight: -0.5 }
+		]),
+		judgment('b', [{ kind: 'signal', id: 'loud', weight: 0.7 }])
+	]
+};
+
+describe('strengths', () => {
+	it('is the weighted sum of the recipe', () => {
+		expect(strengthsFor(rules, { x: 1, y: 0.4 }, post).a).toBeCloseTo(0.3);
+	});
+
+	it('is clamped between 0 and 1', () => {
+		expect(strengthsFor(rules, { x: 0, y: 1 }, post).a).toBe(0);
+		expect(strength([{ ingredient: rules.judgments[0]!.recipe[0]!, value: 1, amount: 3 }])).toBe(1);
+	});
+
+	it('takes a page signal below zero, or one that does not exist, as nothing', () => {
+		const odd = {
+			...rules,
+			signals: [{ id: 'loud', name: 'loud', from: () => -3 }],
+			judgments: [
+				judgment('c', [
+					{ kind: 'signal', id: 'loud', weight: 1 },
+					{ kind: 'signal', id: 'missing', weight: 1 }
+				])
+			]
+		};
+		expect(strengthsFor(odd, {}, post).c).toBe(0);
+	});
+
+	it('clamps a page signal before weighing it', () => {
+		expect(strengthsFor(rules, {}, post).b).toBeCloseTo(0.7);
+	});
+
+	it('takes a missing answer as nothing', () => {
+		const parts = contributions(rules.judgments[0]!, rules, {}, post);
+		expect(strength(parts)).toBe(0);
+	});
+});
+
+describe('doubt', () => {
+	it('counts an answer only past the doubt, from nothing to everything', () => {
+		const doubtful = { ...rules, doubt: 0.4 };
+		expect(strengthsFor(doubtful, { x: 0.4, y: 0 }, post).a).toBe(0);
+		expect(strengthsFor(doubtful, { x: 0.7, y: 0 }, post).a).toBeCloseTo(0.25);
+		expect(strengthsFor(doubtful, { x: 1, y: 0 }, post).a).toBeCloseTo(0.5);
+	});
+});
+
+describe('labelsFor', () => {
+	it('labels more as the sensitivity goes up', () => {
+		const strengths = { a: 0.65, b: 0.5 };
+		const ids = (s: 'low' | 'medium' | 'high') =>
+			labelsFor(rules.judgments, strengths, s).map((j) => j.id);
+		expect(ids('low')).toEqual([]);
+		expect(ids('medium')).toEqual(['a']);
+		expect(ids('high')).toEqual(['a', 'b']);
+	});
+
+	it('labels nothing for a judgment with no strength', () => {
+		expect(labelsFor(rules.judgments, {}, 'ultra')).toEqual([]);
+	});
+
+	it('clears a threshold by reaching it', () => {
+		expect(clears(rules.judgments[0]!, 0.3, 'ultra')).toBe(true);
+		expect(clears(rules.judgments[0]!, 0.29, 'ultra')).toBe(false);
+		expect(labelsFor(rules.judgments, { a: 0.75 }, 'low')).toHaveLength(1);
+	});
+});

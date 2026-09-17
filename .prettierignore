@@ -1,0 +1,6 @@
+node_modules
+.output
+.wxt
+package-lock.json
+*.md
+src/packs/x/page/samples/*.html

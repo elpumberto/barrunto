@@ -1,0 +1,29 @@
+# Tagging a version (v1.2.3) builds the extension and publishes it as a release,
+# so that installing it needs neither Node nor building anything.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run zip
+      - name: Name the archive without its version, so the README's link never goes stale
+        run: cp .output/barrunto-*-chrome.zip barrunto-chrome.zip
+      - name: Publish the release
+        run: gh release create "$GITHUB_REF_NAME" barrunto-chrome.zip --title "$GITHUB_REF_NAME" --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}
