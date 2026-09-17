@@ -1,15 +1,7 @@
-import type { Post } from '@/engine';
+import type { Reading } from '@/engine';
+import type { Post } from '../post';
 import { parseCount } from './count';
 import { selectors } from './selectors';
-
-/** Why a post is not for analyzing. */
-export type Skipped = 'ad' | 'noText' | 'protectedAccount';
-
-/** A post as read, the reason it is not for analyzing, or nothing when the page is not understood. */
-export type Reading = { post: Post } | { skipped: Skipped } | null;
-
-/** Whether X.com is on its white ground or on one of its two dark ones. */
-export type Ground = 'light' | 'dark';
 
 export function findPosts(root: ParentNode): HTMLElement[] {
 	return [...root.querySelectorAll<HTMLElement>(selectors.post)];
@@ -72,18 +64,18 @@ function authorIn(block: HTMLElement): { name: string; handle: string } {
 	return { name: parts.find((part) => part !== handle) ?? handle, handle };
 }
 
-export function readPost(article: HTMLElement): Reading {
+export function readPost(article: HTMLElement): Reading<Post> {
 	const id = postId(article);
 	const author = own<HTMLElement>(article, selectors.author);
 	// An ad shows the word "Ad" where a post shows its time, so it has no link of its own.
 	if (!id) return author ? { skipped: 'ad' } : null;
 	if (!author) return null;
 	// What someone shows only to their followers is not Barrunto's to send anywhere.
-	if (author.querySelector(selectors.protectedAccount)) return { skipped: 'protectedAccount' };
+	if (author.querySelector(selectors.protectedAccount)) return { skipped: 'protected account' };
 
 	const textNode = own<HTMLElement>(article, selectors.text);
 	const text = textNode ? visibleText(textNode).trim() : '';
-	if (!text) return { skipped: 'noText' };
+	if (!text) return { skipped: 'no text' };
 
 	const quotedPost = article.querySelector<HTMLElement>(selectors.quoted);
 	const quotedText = quotedPost?.querySelector(selectors.text);
@@ -91,7 +83,7 @@ export function readPost(article: HTMLElement): Reading {
 	const quotedIsProtected = quotedPost?.querySelector(selectors.protectedAccount) != null;
 
 	return {
-		post: {
+		item: {
 			id,
 			text,
 			author: authorIn(author),
@@ -118,21 +110,11 @@ export function readPost(article: HTMLElement): Reading {
 
 /**
  * Where the label hangs: from the post itself, which is where X.com leaves room for it.
- * If X.com's layout changes, this and the offset in the label's styles are what move.
+ * If X.com's layout changes, this and the pack's `labelPlace` are what move.
  */
 export const labelAnchor = (article: HTMLElement): HTMLElement => article;
 
 /** Where the tuning detail goes: at the end of the post's content, under the row of buttons. */
 export function tuningAnchor(article: HTMLElement): HTMLElement {
 	return own<HTMLElement>(article, selectors.actions)?.parentElement ?? article;
-}
-
-/** Red, green and blue add up to 765 on white and to 0 on black; X.com's dim ground adds up to 96. */
-const HALF_BRIGHT = 382;
-
-export function ground(): Ground {
-	const [r = 255, g = 255, b = 255] = (
-		getComputedStyle(document.body).backgroundColor.match(/\d+/g) ?? []
-	).map(Number);
-	return r + g + b > HALF_BRIGHT ? 'light' : 'dark';
 }

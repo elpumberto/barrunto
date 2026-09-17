@@ -1,6 +1,6 @@
 import { SENSITIVITIES } from '@/engine';
-import type { Judgment, Sensitivity } from '@/engine';
-import type { Ground } from '@/packs/x/page';
+import type { Judgment, LabelPlace, Sensitivity } from '@/engine';
+import type { Ground } from './ground';
 import labelsCss from './labels.css?inline';
 import type { Tuning } from './tuning';
 import tuningCss from './tuning.css?inline';
@@ -8,7 +8,7 @@ import tuningCss from './tuning.css?inline';
 const MARK = 'data-barrunto';
 const SVG = 'http://www.w3.org/2000/svg';
 
-/** The piece of page Barrunto owns inside `parent`, sealed from X.com's styling. Made on first use. */
+/** The piece of page Barrunto owns inside `parent`, sealed from the page's styling. Made on first use. */
 function shadowIn(parent: HTMLElement, kind: string, css: string): ShadowRoot {
 	const found = parent.querySelector<HTMLElement>(`:scope > [${MARK}="${kind}"]`);
 	if (found?.shadowRoot) return found.shadowRoot;
@@ -50,7 +50,7 @@ function labelNode(judgment: Judgment, arrive: boolean): HTMLElement {
 
 	// Once it has dropped in, it must not drop in again each time the labels are put back in order.
 	label.addEventListener('animationend', () => label.classList.remove('arrive'), { once: true });
-	// A click on the label is not a click on the post.
+	// A click on the label is not a click on the item.
 	label.addEventListener('click', (event) => {
 		event.preventDefault();
 		event.stopPropagation();
@@ -59,12 +59,24 @@ function labelNode(judgment: Judgment, arrive: boolean): HTMLElement {
 }
 
 /**
- * Leaves hanging from the post exactly the labels of these judgments, in this order.
+ * Leaves in the anchor exactly the labels of these judgments, in this order, placed as the pack says.
  * Those already up stay as they are, those no longer wanted go at once, new ones drop in.
  */
-export function paintLabels(post: HTMLElement, judgments: Judgment[], arrive = true): void {
-	if (getComputedStyle(post).position === 'static') post.style.position = 'relative';
-	const root = shadowIn(post, 'labels', labelsCss);
+export function paintLabels(
+	anchor: HTMLElement,
+	judgments: Judgment[],
+	place: LabelPlace,
+	arrive = true
+): void {
+	const hanging = place !== 'inline';
+	if (hanging && getComputedStyle(anchor).position === 'static') anchor.style.position = 'relative';
+	const root = shadowIn(anchor, 'labels', labelsCss);
+	const host = root.host as HTMLElement;
+	host.dataset.place = hanging ? 'hanging' : 'inline';
+	if (hanging) {
+		host.style.setProperty('--top', place.top);
+		host.style.setProperty('--right', place.right);
+	}
 
 	const up = new Map<string, HTMLElement>();
 	for (const node of root.querySelectorAll<HTMLElement>('.label')) {

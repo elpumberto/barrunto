@@ -1,12 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { pack as hn } from '@/packs/hn';
+import { pack as x } from '@/packs/x';
 import { closedForm, compact, renderPopup } from './view';
 import type { PopupActions, PopupState } from './view';
 
 const connected: PopupState = {
 	connection: { state: 'connected' },
-	settings: { paused: false, sensitivity: 'medium', tuning: false },
-	session: { posts: 7, tokensIn: 1900, tokensOut: 98 },
-	total: { posts: 1284, tokensIn: 352_000, tokensOut: 18_000 },
+	settings: {
+		paused: false,
+		tuning: false,
+		packs: { x: { enabled: true, sensitivity: 'medium', options: {} } }
+	},
+	pack: x,
+	session: { items: 7, tokensIn: 1900, tokensOut: 98 },
+	total: { items: 1284, tokensIn: 352_000, tokensOut: 18_000 },
 	keyTail: '4f2a',
 	form: closedForm
 };
@@ -19,8 +26,10 @@ const actions = {
 	removeKey: vi.fn(),
 	setPaused: vi.fn(),
 	setSensitivity: vi.fn(),
+	setOption: vi.fn(),
 	setTuning: vi.fn(),
-	resetCounters: vi.fn()
+	resetCounters: vi.fn(),
+	openPacks: vi.fn()
 } satisfies PopupActions;
 
 let root: HTMLElement;
@@ -84,6 +93,27 @@ describe('the popup', () => {
 		expect(root.querySelector('.stops')).not.toBeNull();
 	});
 
+	it('shows the controls of the pack of this page, its own ones too, and sends them to their actions', () => {
+		const chosen = { enabled: true, sensitivity: 'high' as const, options: {} };
+		draw({ pack: hn, settings: { ...connected.settings, packs: { hn: chosen } } });
+		expect(root.querySelector('.eyebrow')!.textContent).toBe('Hacker News');
+		expect(root.querySelector('[aria-pressed="true"]')!.textContent).toBe('High');
+		const fade = root.querySelector('[data-action="option"][data-value="fade"]')!;
+		expect(fade.getAttribute('aria-checked')).toBe('false');
+		click('[data-action="option"][data-value="fade"]');
+		expect(actions.setOption).toHaveBeenCalledWith('hn', 'fade', true);
+	});
+
+	it('shows no controls over a page with no pack on, and says so louder when none is on at all', () => {
+		draw({ pack: null });
+		expect(root.querySelector('.stops')).toBeNull();
+		expect(root.textContent).toContain('No rule pack is on for this page');
+		draw({ pack: hn });
+		expect(root.querySelector('.stops')).toBeNull();
+		draw({ pack: null, settings: { ...connected.settings, packs: {} } });
+		expect(root.querySelector('.warning')!.textContent).toContain('No rule pack is on');
+	});
+
 	it('lets a change of key be backed out of, and locks the form while checking', () => {
 		draw({ form: { ...closedForm, open: true } });
 		click('[data-action="cancel"]');
@@ -98,12 +128,14 @@ describe('the popup', () => {
 		click('[data-action="pause"]');
 		expect(actions.setPaused).toHaveBeenCalledWith(true);
 		click('[data-action="sensitivity"][data-value="ultra"]');
-		expect(actions.setSensitivity).toHaveBeenCalledWith('ultra');
+		expect(actions.setSensitivity).toHaveBeenCalledWith('x', 'ultra');
 		click('[data-action="tuning"]');
 		expect(actions.setTuning).toHaveBeenCalledWith(true);
 		click('[data-action="reset"]');
 		click('[data-action="change"]');
 		click('[data-action="remove"]');
+		click('[data-action="packs"]');
+		expect(actions.openPacks).toHaveBeenCalled();
 		expect(actions.resetCounters).toHaveBeenCalled();
 		expect(actions.changeKey).toHaveBeenCalled();
 		expect(actions.removeKey).toHaveBeenCalled();
@@ -127,7 +159,7 @@ describe('the popup', () => {
 		const typing = { ...closedForm, open: true, typed: 'half a k' };
 		draw({ form: typing });
 		root.querySelector<HTMLInputElement>('#key')!.focus();
-		draw({ form: typing, session: { posts: 8, tokensIn: 2000, tokensOut: 100 } });
+		draw({ form: typing, session: { items: 8, tokensIn: 2000, tokensOut: 100 } });
 		const field = root.querySelector<HTMLInputElement>('#key')!;
 		expect(field.value).toBe('half a k');
 		expect(document.activeElement).toBe(field);

@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
-import type { Post } from '@/engine';
 import { jev, JevError } from '@/jev';
-import { rules } from '@/packs/x/rules';
-import { apiKey, connection, sessionCounters, settings } from '@/storage';
-import { analyze } from './analyze';
+import { pack as hn } from '@/packs/hn';
+import type { Comment } from '@/packs/hn';
+import { pack as x } from '@/packs/x';
+import type { Post } from '@/packs/x';
+import { apiKey, changePack, connection, sessionCounters, settings } from '@/storage';
+import { analyze as analyzeFrom } from './analyze';
 
 vi.mock('@/jev', async (original) => ({
 	...(await original<typeof import('@/jev')>()),
@@ -23,7 +25,11 @@ const post = (id: string): Post => ({
 	quoted: null
 });
 
-const answers = Object.fromEntries(rules.traits.map((trait) => [trait.id, 0.9]));
+const HOME = 'https://x.com/home';
+/** As the X.com page asks. */
+const analyze = (item: Post) => analyzeFrom(x.id, item, HOME);
+
+const answers = Object.fromEntries(x.rules.traits.map((trait) => [trait.id, 0.9]));
 const answering = () =>
 	vi.mocked(jev.ask).mockResolvedValue({ answers, usage: { tokensIn: 100, tokensOut: 10 } });
 
@@ -31,6 +37,7 @@ beforeEach(async () => {
 	fakeBrowser.reset();
 	await apiKey.setValue('the-key');
 	await connection.setValue({ state: 'connected' });
+	await changePack(x, () => ({ enabled: true }));
 });
 
 describe('analyze', () => {
@@ -47,16 +54,44 @@ describe('analyze', () => {
 		await analyze(post('2'));
 		await analyze(post('2'));
 		expect(jev.ask).toHaveBeenCalledTimes(1);
-		expect(await sessionCounters.getValue()).toEqual({ posts: 1, tokensIn: 100, tokensOut: 10 });
+		expect(await sessionCounters.getValue()).toEqual({ items: 1, tokensIn: 100, tokensOut: 10 });
 	});
 
 	it('asks nothing while paused or without a key', async () => {
-		await settings.setValue({ paused: true, sensitivity: 'medium', tuning: false });
+		await settings.setValue({ ...(await settings.getValue()), paused: true });
 		expect(await analyze(post('3'))).toEqual({ analyzed: false, reason: 'paused' });
 		await settings.removeValue();
 		await apiKey.removeValue();
 		expect(await analyze(post('3'))).toEqual({ analyzed: false, reason: 'noKey' });
 		expect(jev.ask).not.toHaveBeenCalled();
+	});
+
+	it('answers a pack only while it is on, and only for its own sites', async () => {
+		answering();
+		const off = { analyzed: false, reason: 'packOff' };
+		expect(await analyzeFrom(hn.id, post('9'), 'https://news.ycombinator.com/item?id=9')).toEqual(
+			off
+		);
+		expect(await analyzeFrom(x.id, post('9'), 'https://elsewhere.example/')).toEqual(off);
+		expect(await analyzeFrom('unknown', post('9'), HOME)).toEqual(off);
+		expect(jev.ask).not.toHaveBeenCalled();
+	});
+
+	it('keeps the answers of each pack apart, even for items of the same name', async () => {
+		answering();
+		await changePack(hn, () => ({ enabled: true }));
+		await analyze(post('10'));
+		const story = { title: 'A story', text: '' };
+		const comment: Comment = {
+			id: '10',
+			text: 'made up',
+			author: 'a',
+			depth: 0,
+			story,
+			parent: null
+		};
+		await analyzeFrom(hn.id, comment, 'https://news.ycombinator.com/item?id=1');
+		expect(jev.ask).toHaveBeenCalledTimes(2);
 	});
 
 	it('notes a rejected key and asks no more until it changes', async () => {

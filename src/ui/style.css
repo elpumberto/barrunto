@@ -322,3 +322,52 @@ button {
 .link.end {
 	align-self: flex-end;
 }
+
+/* A row inside a row: a title and its help on one side, its switch on the other. */
+.inline {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+}
+
+.row > .inline {
+	padding-top: 6px;
+}
+
+.eyebrow {
+	color: var(--ink-2);
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+
+.warning {
+	color: var(--warn);
+	font-size: 13px;
+}
+
+/* A label as it hangs on a page, without the string or the tilt. */
+.chip {
+	display: inline-flex;
+	align-items: center;
+	justify-self: start;
+	gap: 4px;
+	padding: 2px 8px 2px 7px;
+	border-radius: 3px 3px 5px 5px;
+	background: var(--color);
+	color: var(--ink);
+	font-size: 11px;
+	font-weight: 800;
+	line-height: 16px;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+	white-space: nowrap;
+}
+
+.chip svg {
+	width: 11px;
+	height: 11px;
+	flex: none;
+}

@@ -1,18 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { clears, contributions, labelsFor, strength, strengthsFor } from '.';
-import type { Judgment, Post, Rules } from '.';
+import type { Item, Judgment, Rules } from '.';
 
-const post: Post = {
-	id: '1',
-	text: 'made up',
-	author: { name: 'Nobody', handle: '@nobody' },
-	metrics: { replies: 10, reposts: 0, likes: 0 },
-	hasMedia: false,
-	hasLink: false,
-	inThread: false,
-	isCutShort: false,
-	quoted: null
-};
+/** An item of a made-up pack: the engine knows nothing of what is in one. */
+interface Shout extends Item {
+	text: string;
+	replies: number;
+}
+
+const post: Shout = { id: '1', text: 'made up', replies: 10 };
 
 const judgment = (id: string, recipe: Judgment['recipe']): Judgment => ({
 	id,
@@ -21,11 +17,11 @@ const judgment = (id: string, recipe: Judgment['recipe']): Judgment => ({
 	label: { text: id, hint: '', glyph: '', color: '#000', ink: '#fff' }
 });
 
-const rules: Rules = {
+const rules: Rules<Shout> = {
 	doubt: 0,
 	present: (p) => p.text,
 	traits: [],
-	signals: [{ id: 'loud', name: 'loud', from: (p) => p.metrics.replies }],
+	signals: [{ id: 'loud', name: 'loud', from: (p) => p.replies }],
 	judgments: [
 		judgment('a', [
 			{ kind: 'trait', id: 'x', weight: 0.5 },

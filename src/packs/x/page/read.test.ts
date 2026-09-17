@@ -32,7 +32,7 @@ describe('readPost', () => {
 			${actions('1,412 Replies. Reply', '38 reposts. Repost', '12 Likes. Like')}`)
 		);
 		expect(reading).toEqual({
-			post: {
+			item: {
 				id: '1234567890',
 				text: 'Shipping on a Friday 🚀example.com',
 				author: { name: 'Ada Nobody', handle: '@ada_nobody' },
@@ -52,7 +52,7 @@ describe('readPost', () => {
 			<div role="link" tabindex="0">${header('Bob Noone', 'bob', '2')}<div data-testid="tweetText">quoted words</div></div>
 			${actions('', '', '')}`)
 		);
-		expect(reading).toEqual({ skipped: 'noText' });
+		expect(reading).toEqual({ skipped: 'no text' });
 		expect(postId(findPosts(document)[0]!)).toBe('1');
 	});
 
@@ -65,22 +65,22 @@ describe('readPost', () => {
 		const lock = '<svg data-testid="icon-lock"></svg>';
 		const locked = header('Ada Nobody', 'ada_nobody', '7').replace('</a>', `${lock}</a>`);
 		expect(read(article(`${locked}<div data-testid="tweetText">for followers</div>`))).toEqual({
-			skipped: 'protectedAccount'
+			skipped: 'protected account'
 		});
 
 		const quoting = `${header('Bob Noone', 'bob', '8')}<div data-testid="tweetText">look at this</div>
 			<div role="link" tabindex="0"><div data-testid="User-Name"><span>Ada</span>${lock}<span>@ada</span></div><div data-testid="tweetText">for followers</div></div>`;
-		expect(read(article(quoting))).toMatchObject({ post: { text: 'look at this', quoted: null } });
+		expect(read(article(quoting))).toMatchObject({ item: { text: 'look at this', quoted: null } });
 	});
 
 	it('reads a name made of emoji, and a name that starts with an at sign', () => {
 		const emoji = `<div data-testid="User-Name"><a href="/cat"><span><img alt="🐈"></span></a><a href="/cat"><span>@cat</span></a><a href="/cat/status/9"><time>1h</time></a></div>`;
 		expect(read(article(`${emoji}<div data-testid="tweetText">meow</div>`))).toMatchObject({
-			post: { author: { name: '🐈', handle: '@cat' } }
+			item: { author: { name: '🐈', handle: '@cat' } }
 		});
 		expect(
 			read(article(`${header('@home', 'realhandle', '10')}<div data-testid="tweetText">hi</div>`))
-		).toMatchObject({ post: { author: { name: '@home', handle: '@realhandle' } } });
+		).toMatchObject({ item: { author: { name: '@home', handle: '@realhandle' } } });
 	});
 
 	it('returns nothing for what it does not understand', () => {
@@ -99,7 +99,7 @@ describe('readPost, on samples of the real page', () => {
 
 	it('reads a plain post', () => {
 		expect(sample('plain')).toMatchObject({
-			post: {
+			item: {
 				id: '1000',
 				text: expect.stringContaining('Made-up words of a post.'),
 				author: { name: 'Some One', handle: '@someone1' },
@@ -111,28 +111,28 @@ describe('readPost, on samples of the real page', () => {
 
 	it('does not take a post with a video for an ad', () => {
 		expect(sample('video')).toMatchObject({
-			post: { hasMedia: true, metrics: { replies: 2, reposts: 5, likes: 5 } }
+			item: { hasMedia: true, metrics: { replies: 2, reposts: 5, likes: 5 } }
 		});
 	});
 
 	it('reads the post and not the one it quotes', () => {
 		const reading = sample('quote');
 		expect(reading).toMatchObject({
-			post: {
+			item: {
 				id: '1000',
 				author: { name: 'Some One', handle: '@someone1' },
 				metrics: { replies: 3, reposts: 24, likes: 138 },
 				quoted: { author: '@someone2', text: expect.stringContaining('the quoted post') }
 			}
 		});
-		expect(reading && 'post' in reading && reading.post.text).not.toContain('the quoted post');
+		expect(reading && 'item' in reading && reading.item.text).not.toContain('the quoted post');
 	});
 
 	it('notices a text that is cut short', () => {
 		const cut = Object.keys(samples).filter((name) => samples[name]!.includes('show-more-link'));
 		expect(cut.length).toBeGreaterThan(0);
 		for (const name of cut)
-			expect(read(samples[name]!)).toMatchObject({ post: { isCutShort: true } });
-		expect(sample('plain')).toMatchObject({ post: { isCutShort: false } });
+			expect(read(samples[name]!)).toMatchObject({ item: { isCutShort: true } });
+		expect(sample('plain')).toMatchObject({ item: { isCutShort: false } });
 	});
 });

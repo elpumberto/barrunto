@@ -1,41 +1,35 @@
 import type { ContentScriptContext } from 'wxt/utils/content-script-context';
-import { labelsFor } from '@/engine';
-import type { Post } from '@/engine';
+import { labelsFor, packSettingsOf } from '@/engine';
+import type { Item, Pack, PageHalf } from '@/engine';
 import { send } from '@/messages';
 import type { Analysis } from '@/messages';
-import { findPosts, ground, labelAnchor, postId, readPost, tuningAnchor } from '@/packs/x/page';
-import type { Skipped } from '@/packs/x/page';
-import { rules } from '@/packs/x/rules';
 import { connection, pageSettings } from '@/storage/session';
 import type { ConnectionStatus, Settings } from '@/storage/types';
+import { ground } from './ground';
 import { clearTuning, paintLabels, paintTuning } from './paint';
 import { tuningFor } from './tuning';
 
-/** How long a post has to stay on screen before it is analyzed. */
-const DWELL_MS = 700;
-/** How much of a post has to show, or of the screen it has to fill when it is taller than the screen. */
+/** How much of an item has to show, or of the screen it has to fill when it is taller than the screen. */
 const IN_VIEW = 0.5;
-/** X.com changes its page in bursts: the posts are gone over once the burst settles. */
+/** A page changes in bursts: the items are gone over once the burst settles. */
 const SETTLE_MS = 150;
-/** How many analyzed posts a tab remembers, for when X.com draws them again on scrolling back. */
-const POSTS_REMEMBERED = 500;
+/** How many analyzed items a tab remembers, for when the page draws them again on scrolling back. */
+const ITEMS_REMEMBERED = 500;
 /** Right after installing, the page can ask for the status before the background has opened session storage. */
 const STATUS_TRIES = { times: 5, everyMs: 500 };
 
-/** What came of looking at a post. */
+/** What came of looking at an item. */
 type Outcome =
-	| { post: Post; analysis: Analysis }
-	| { skipped: Skipped }
+	| { item: Item; analysis: Analysis }
+	| { skipped: string }
 	| { failed: 'noReply' | 'extensionReloaded' };
 
-/** What the tuning detail says for a post that was not analyzed. */
+/** What the tuning detail says for an item that was not analyzed. Why a pack skips one, it says in words itself. */
 const IN_WORDS: Record<string, string> = {
-	ad: 'ad',
-	noText: 'no text',
-	protectedAccount: 'protected account',
 	noKey: 'no key',
 	paused: 'paused',
 	keyRejected: 'key rejected',
+	packOff: 'this pack is off',
 	tooManyCalls: 'too many calls',
 	serviceDown: 'service down',
 	noNetwork: 'no network',
@@ -43,7 +37,7 @@ const IN_WORDS: Record<string, string> = {
 	extensionReloaded: 'the extension was reloaded'
 };
 
-/** A post element on the page: which post it shows, whether it has been asked about, and what came of it. */
+/** An item's element on the page: which item it shows, whether it has been asked about, and what came of it. */
 interface Tracked {
 	id: string | null;
 	asked: boolean;
@@ -51,7 +45,7 @@ interface Tracked {
 }
 
 const analyzed = (outcome: Outcome | undefined) =>
-	outcome !== undefined && 'post' in outcome && outcome.analysis.analyzed;
+	outcome !== undefined && 'item' in outcome && outcome.analysis.analyzed;
 
 async function connectionNow(tries = STATUS_TRIES.times): Promise<ConnectionStatus> {
 	try {
@@ -63,40 +57,47 @@ async function connectionNow(tries = STATUS_TRIES.times): Promise<ConnectionStat
 	}
 }
 
-/** Watches X.com's page for posts, has the ones that dwell analyzed, and paints what comes back. */
-export async function watchPage(ctx: ContentScriptContext) {
-	/** What is known of each post element on the page. */
+/** Watches a page of the pack's for its items, has the ones that dwell analyzed, and paints what comes back. */
+export async function watchPage(ctx: ContentScriptContext, pack: Pack, page: PageHalf) {
+	const { rules } = pack;
+	/** What is known of each item's element on the page. */
 	const tracked = new WeakMap<HTMLElement, Tracked>();
-	/** What came of each analyzed post, by id, for when X.com draws it again. The oldest go first. */
+	/** What came of each analyzed item, by id, for when the page draws it again. The oldest go first. */
 	const remembered = new Map<string, Outcome>();
 	const dwelling = new Map<HTMLElement, number>();
 
 	let connectionStatus = await connectionNow();
 	let currentSettings: Settings = await pageSettings.getValue();
+	/** What the user has chosen for this pack, as it stands now. */
+	const chosen = () => packSettingsOf(pack, currentSettings.packs[pack.id]);
 	const reading = () =>
 		!currentSettings.paused &&
+		chosen().enabled &&
 		(connectionStatus.state === 'connected' || connectionStatus.state === 'trouble');
 
 	function remember(id: string, outcome: Outcome) {
 		remembered.set(id, outcome);
 		const oldest = remembered.keys().next().value;
-		if (remembered.size > POSTS_REMEMBERED && oldest !== undefined) remembered.delete(oldest);
+		if (remembered.size > ITEMS_REMEMBERED && oldest !== undefined) remembered.delete(oldest);
 	}
 
 	function paint(article: HTMLElement, outcome: Outcome, arrive: boolean) {
 		try {
-			const analysis = 'post' in outcome ? outcome.analysis : null;
+			const { sensitivity, options } = chosen();
+			const analysis = 'item' in outcome ? outcome.analysis : null;
 			const labels = analysis?.analyzed
-				? labelsFor(rules.judgments, analysis.strengths, currentSettings.sensitivity)
+				? labelsFor(rules.judgments, analysis.strengths, sensitivity)
 				: [];
-			paintLabels(labelAnchor(article), labels, arrive);
+			paintLabels(page.labelAnchor(article), labels, page.labelPlace, arrive);
+			page.act?.(article, labels, options);
 
-			const anchor = tuningAnchor(article);
+			const anchor = page.tuningAnchor(article);
 			if (!currentSettings.tuning) return clearTuning(anchor);
+			const reason = reasonOf(outcome);
 			const tuning =
-				'post' in outcome && outcome.analysis.analyzed
-					? tuningFor(rules, outcome.analysis.answers, outcome.post, currentSettings.sensitivity)
-					: { analyzed: false as const, reason: IN_WORDS[reasonOf(outcome)] ?? 'unknown' };
+				'item' in outcome && outcome.analysis.analyzed
+					? tuningFor(rules, outcome.analysis.answers, outcome.item, sensitivity)
+					: { analyzed: false as const, reason: IN_WORDS[reason] ?? reason };
 			paintTuning(anchor, tuning, ground());
 		} catch (error) {
 			console.error('[barrunto] could not paint a post', error);
@@ -105,38 +106,39 @@ export async function watchPage(ctx: ContentScriptContext) {
 
 	function unpaint(article: HTMLElement) {
 		try {
-			paintLabels(labelAnchor(article), [], false);
-			clearTuning(tuningAnchor(article));
+			paintLabels(page.labelAnchor(article), [], page.labelPlace, false);
+			page.act?.(article, [], chosen().options);
+			clearTuning(page.tuningAnchor(article));
 		} catch (error) {
 			console.error('[barrunto] could not clear a post', error);
 		}
 	}
 
 	async function look(article: HTMLElement) {
-		const mine = tracked.get(article);
-		if (!mine || mine.asked || !reading() || ctx.isInvalid) return;
+		const known = tracked.get(article);
+		if (!known || known.asked || !reading() || ctx.isInvalid) return;
 
-		const read = readPost(article);
+		const read = page.read(article);
 		if (!read) {
-			if (currentSettings.tuning) console.debug('[barrunto] could not read this post', article);
+			if (currentSettings.tuning) console.debug('[barrunto] could not read this item', article);
 			return;
 		}
-		mine.asked = true;
+		known.asked = true;
 
 		let outcome: Outcome;
 		if ('skipped' in read) {
 			outcome = read;
 		} else {
-			const { post } = read;
-			outcome = await send({ type: 'analyzePost', post }).then(
-				(analysis): Outcome => (analysis ? { post, analysis } : { failed: 'noReply' }),
+			const { item } = read;
+			outcome = await send({ type: 'analyze', packId: pack.id, item }).then(
+				(analysis): Outcome => (analysis ? { item, analysis } : { failed: 'noReply' }),
 				(): Outcome => ({ failed: 'extensionReloaded' })
 			);
-			if (analyzed(outcome)) remember(post.id, outcome);
+			if (analyzed(outcome)) remember(item.id, outcome);
 		}
-		// X.com may have given the element to another post while Jev was answering.
-		if (tracked.get(article) !== mine || !article.isConnected) return;
-		mine.outcome = outcome;
+		// The page may have given the element to another item while Jev was answering.
+		if (tracked.get(article) !== known || !article.isConnected) return;
+		known.outcome = outcome;
 		paint(article, outcome, true);
 	}
 
@@ -147,7 +149,7 @@ export async function watchPage(ctx: ContentScriptContext) {
 				window.clearTimeout(dwelling.get(article));
 				dwelling.delete(article);
 
-				// A post taller than the screen never shows half of itself: filling half the screen does.
+				// An item taller than the screen never shows half of itself: filling half the screen does.
 				const fillsScreen = intersectionRect.height >= (rootBounds?.height ?? Infinity) * IN_VIEW;
 				if (intersectionRatio < IN_VIEW && !fillsScreen) continue;
 				dwelling.set(
@@ -156,20 +158,20 @@ export async function watchPage(ctx: ContentScriptContext) {
 						onScreen.unobserve(article);
 						dwelling.delete(article);
 						void look(article);
-					}, DWELL_MS)
+					}, page.dwellMs)
 				);
 			}
 		},
 		{ threshold: [0, 0.1, 0.25, IN_VIEW] }
 	);
 
-	/** Goes over the posts on the page: paints the ones already known, waits for the rest to dwell. */
+	/** Goes over the items on the page: paints the ones already known, waits for the rest to dwell. */
 	function scan() {
 		// Reloading the extension leaves this script running in the open page, cut off from the rest:
 		// asking whether it still holds is what makes it let go of the page.
 		if (ctx.isInvalid) return;
-		for (const article of findPosts(document)) {
-			const id = postId(article);
+		for (const article of page.find(document)) {
+			const id = page.idOf(article);
 			let mine = tracked.get(article);
 			if (!mine || mine.id !== id) {
 				if (mine) unpaint(article);
@@ -183,15 +185,15 @@ export async function watchPage(ctx: ContentScriptContext) {
 	}
 
 	function repaint() {
-		for (const article of findPosts(document)) {
+		for (const article of page.find(document)) {
 			const outcome = tracked.get(article)?.outcome;
 			if (outcome) paint(article, outcome, true);
 		}
 	}
 
-	/** A post that could not be analyzed gets another chance when Barrunto starts reading again. */
+	/** An item that could not be analyzed gets another chance when Barrunto starts reading again. */
 	function forgetFailures() {
-		for (const article of findPosts(document)) {
+		for (const article of page.find(document)) {
 			const mine = tracked.get(article);
 			if (!mine?.outcome || 'skipped' in mine.outcome || analyzed(mine.outcome)) continue;
 			mine.asked = false;

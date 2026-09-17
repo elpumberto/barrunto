@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { rules } from '@/packs/x/rules';
-import { paintLabels } from './paint';
+import type { Judgment } from '@/engine';
+import { paintLabels as paintLabelsAt } from './paint';
+
+const PLACE = { top: '4px', right: '84px' };
+const paintLabels = (item: HTMLElement, judgments: Judgment[], arrive?: boolean) =>
+	paintLabelsAt(item, judgments, PLACE, arrive);
 
 const [bait, flame, signal] = rules.judgments as [
 	(typeof rules.judgments)[0],
@@ -75,5 +80,16 @@ describe('paintLabels', () => {
 		expect(label.title).toBe(
 			'Flame: Picking a fight, or already causing one. A hunch, not a verdict.'
 		);
+	});
+
+	it('hangs them from the corner that far from it, or puts them in line', () => {
+		paintLabels(post, [flame]);
+		const host = post.querySelector<HTMLElement>('[data-barrunto="labels"]')!;
+		expect(host.dataset.place).toBe('hanging');
+		expect(host.style.getPropertyValue('--right')).toBe('84px');
+
+		const header = post.querySelector('p')!;
+		paintLabelsAt(header, [flame], 'inline');
+		expect(header.querySelector<HTMLElement>('[data-barrunto]')!.dataset.place).toBe('inline');
 	});
 });

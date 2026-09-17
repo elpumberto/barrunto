@@ -1,4 +1,8 @@
 import { defineConfig } from 'wxt';
+import { packs } from './src/packs';
+
+const sites = packs.flatMap((pack) => pack.sites);
+const TYPESAFE = 'https://api.typesafe.ai/*';
 
 export default defineConfig({
 	srcDir: 'src',
@@ -8,8 +12,12 @@ export default defineConfig({
 		name: 'Barrunto',
 		// The first Chrome where the background can open session storage to a content script.
 		minimum_chrome_version: '102',
-		permissions: ['storage'],
-		host_permissions: ['https://api.typesafe.ai/*'],
+		// `scripting` is what lets the background have the content script run only where a pack is on.
+		permissions: ['storage', 'scripting'],
+		// Barrunto may act on no site until the user turns its pack on, and Chrome asks them then. The
+		// stand-in build holds them all from the start: the smoke test has nobody to answer Chrome.
+		host_permissions: process.env.WXT_STAND_IN ? [TYPESAFE, ...sites] : [TYPESAFE],
+		optional_host_permissions: sites,
 		action: { default_title: 'Barrunto' }
 	}
 });

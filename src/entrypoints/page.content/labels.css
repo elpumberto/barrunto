@@ -1,8 +1,8 @@
 :host {
 	position: absolute;
-	top: 0;
-	/* Clear of X.com's own two buttons in that corner: Grok's and the menu. */
-	right: 84px;
+	/* How far from the corner is the pack's to say: each page keeps its own things there. */
+	top: var(--top, 0);
+	right: var(--right, 0);
 	z-index: 1;
 	display: flex;
 	gap: 8px;
@@ -79,4 +79,16 @@ svg {
 	.arrive {
 		animation: drop 0.45s ease-out;
 	}
+}
+
+/* In line at the end of their anchor, the labels take their place in the text and hang from nothing. */
+:host([data-place='inline']) {
+	position: static;
+	display: inline-flex;
+	margin-left: 8px;
+	vertical-align: middle;
+}
+
+:host([data-place='inline']) .string {
+	display: none;
 }

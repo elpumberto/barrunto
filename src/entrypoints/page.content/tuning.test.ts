@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { labelsFor, strengthsFor } from '@/engine';
-import type { Post } from '@/engine';
+import type { Post } from '@/packs/x';
 import { rules } from '@/packs/x/rules';
 import { clearTuning, paintTuning } from './paint';
 import { tuningFor } from './tuning';

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { SENSITIVITIES, wordingOf } from '@/engine';
-import type { Post } from '@/engine';
+import { wordingOf } from '@/engine';
+import type { Post } from '../post';
 import { rules } from '.';
 
 const post: Post = {
@@ -16,34 +16,13 @@ const post: Post = {
 };
 const presented = rules.present(post) as { post: Record<string, unknown> };
 
-describe('the X.com rules hold together', () => {
-	it('names in every recipe a trait or a page signal that exists, once', () => {
-		const ids = [...rules.traits, ...rules.signals].map((input) => input.id);
-		expect(new Set(ids).size).toBe(ids.length);
-		for (const judgment of rules.judgments) {
-			for (const { kind, id } of judgment.recipe) {
-				const among = kind === 'trait' ? rules.traits : rules.signals;
-				expect(
-					among.map((input) => input.id),
-					`${judgment.id}: ${id}`
-				).toContain(id);
-			}
-		}
-	});
-
+// What holds for the rules of every pack is in `packs.test.ts`.
+describe('the X.com rules', () => {
 	it('points in its questions only at fields the post is presented with', () => {
 		for (const { question, yes = '', no = '' } of rules.traits) {
 			for (const [, field] of `${question} ${yes} ${no}`.matchAll(/`post\.(\w+)`/g)) {
 				expect(Object.keys(presented.post), question).toContain(field);
 			}
-		}
-	});
-
-	it('asks for less strength at each step up in sensitivity', () => {
-		for (const { thresholds } of rules.judgments) {
-			const steps = SENSITIVITIES.map((s) => thresholds[s]);
-			expect(steps).toEqual([...steps].sort((a, b) => b - a));
-			expect(new Set(steps).size).toBe(steps.length);
 		}
 	});
 

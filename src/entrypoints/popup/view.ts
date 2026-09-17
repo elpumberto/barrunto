@@ -1,7 +1,10 @@
-import { SENSITIVITIES } from '@/storage/types';
+import { packSettingsOf } from '@/engine';
+import type { Pack } from '@/engine';
 import type { KeyFailure } from '@/messages';
 // The types alone, and not `@/storage`: drawing the popup needs no Chrome, and so its tests need none either.
-import type { ConnectionStatus, Counters, Sensitivity, Settings } from '@/storage/types';
+import type { ConnectionStatus, Counters, Settings } from '@/storage/types';
+import { focusedIn, onPackControl, packControls, toggle } from '@/ui/pack-controls';
+import type { PackActions } from '@/ui/pack-controls';
 import eyebrow from '@/assets/icon.svg?raw';
 import wordmark from '@/assets/wordmark.svg?raw';
 import { texts } from './texts';
@@ -10,6 +13,8 @@ import { texts } from './texts';
 export interface PopupState {
 	connection: ConnectionStatus;
 	settings: Settings;
+	/** The pack that acts on the page the popup was opened over, if one does and Barrunto can tell. */
+	pack: Pack | null;
 	session: Counters;
 	total: Counters;
 	/** The last four characters of the stored key. */
@@ -30,7 +35,7 @@ export const closedForm: KeyForm = { open: false, checking: false, failure: null
 /** How much of the key is shown. */
 export const tailOf = (apiKey: string | null) => (apiKey ?? '').slice(-4);
 
-export interface PopupActions {
+export interface PopupActions extends PackActions {
 	connect(apiKey: string): void;
 	/** What is in the key field, as it is typed. It asks for no redraw. */
 	typed(text: string): void;
@@ -38,9 +43,9 @@ export interface PopupActions {
 	cancelKey(): void;
 	removeKey(): void;
 	setPaused(paused: boolean): void;
-	setSensitivity(sensitivity: Sensitivity): void;
 	setTuning(tuning: boolean): void;
 	resetCounters(): void;
+	openPacks(): void;
 }
 
 const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -88,8 +93,15 @@ function keyForm({ form, connection }: PopupState, canCancel: boolean): string {
 	</form>`;
 }
 
-const toggle = (action: string, on: boolean, name: string) =>
-	`<button class="switch" type="button" role="switch" aria-checked="${on}" aria-label="${name}" data-action="${action}"></button>`;
+/** The controls of the pack that acts on this page, while it is on; or where to go to turn one on. */
+function packRow({ settings, pack }: PopupState): string {
+	const chosen = pack && packSettingsOf(pack, settings.packs[pack.id]);
+	if (pack && chosen?.enabled) {
+		return `<section class="row"><div class="eyebrow">${pack.name}</div>${packControls(pack, chosen)}</section>`;
+	}
+	const anyOn = Object.values(settings.packs).some((p) => p.enabled);
+	return `<section class="row"><p class="${anyOn ? 'help' : 'warning'}">${anyOn ? texts.packs.notHere : texts.packs.noneOn}</p></section>`;
+}
 
 function working(state: PopupState): string {
 	const { connection, settings, session, total, keyTail } = state;
@@ -99,35 +111,22 @@ function working(state: PopupState): string {
 	return `${connection.state === 'trouble' ? `<p class="band">${texts.trouble[connection.reason]}</p>` : ''}
 	<section class="row inline"><div><div class="title">${reading.title}</div><p class="help">${reading.help}</p></div>
 		${toggle('pause', !settings.paused, texts.reading.on.title)}</section>
-	<section class="row"><div class="title">${texts.sensitivity.title}</div>
-		<div class="stops">${SENSITIVITIES.map(
-			(s) =>
-				`<button type="button" data-action="sensitivity" data-value="${s}" aria-pressed="${s === settings.sensitivity}">${texts.sensitivity.stops[s]}</button>`
-		).join('')}</div>
-		<p class="help">${texts.sensitivity.help[settings.sensitivity]}</p></section>
+	${packRow(state)}
 	<section class="row"><table class="counters">
 		<tr><th></th><th>${texts.counters.session}</th><th>${texts.counters.total}</th></tr>
-		${counter(texts.counters.posts, 'posts')}${counter(texts.counters.tokensIn, 'tokensIn')}${counter(texts.counters.tokensOut, 'tokensOut')}</table>
+		${counter(texts.counters.items, 'items')}${counter(texts.counters.tokensIn, 'tokensIn')}${counter(texts.counters.tokensOut, 'tokensOut')}</table>
 		<button class="link end" type="button" data-action="reset">${texts.counters.reset}</button></section>
 	<section class="row"><div class="key"><span>Key ts_••••••${escapeHtml(keyTail)}</span>
 		<button class="link" type="button" data-action="change">${texts.key.change}</button>
 		<button class="link" type="button" data-action="remove">${texts.key.remove}</button></div></section>
 	<section class="row inline"><div><div class="title">${texts.tuning.title}</div><p class="help">${texts.tuning.help}</p></div>
-		${toggle('tuning', settings.tuning, texts.tuning.title)}</section>`;
+		${toggle('tuning', settings.tuning, texts.tuning.title)}</section>
+	<section class="row"><button class="link" type="button" data-action="packs">${texts.packs.open}</button></section>`;
 }
-
-/** What has the focus, in a form that survives a redraw. */
-const focusedIn = (root: HTMLElement) => {
-	const el = root.contains(document.activeElement) ? (document.activeElement as HTMLElement) : null;
-	if (!el) return null;
-	if (el.id) return `#${el.id}`;
-	const { action, value } = el.dataset;
-	return action ? `[data-action="${action}"]${value ? `[data-value="${value}"]` : ''}` : null;
-};
 
 /**
  * Draws the popup for this state inside `root`, and sends what the user does to `actions`.
- * Everything drawn as HTML is Barrunto's own (the texts and the two drawings) except the key's
+ * Everything drawn as HTML is Barrunto's own or a pack's (texts and drawings) except the key's
  * tail, which is escaped; what is typed goes in as the field's value, never as HTML.
  */
 export function renderPopup(root: HTMLElement, state: PopupState, actions: PopupActions): void {
@@ -149,13 +148,12 @@ export function renderPopup(root: HTMLElement, state: PopupState, actions: Popup
 	};
 	root.onclick = (event) => {
 		const button = (event.target as Element).closest<HTMLElement>('[data-action]');
+		if (onPackControl(button, actions)) return;
 		switch (button?.dataset.action) {
 			case 'pause':
 				return actions.setPaused(!settings.paused);
 			case 'tuning':
 				return actions.setTuning(!settings.tuning);
-			case 'sensitivity':
-				return actions.setSensitivity(button.dataset.value as Sensitivity);
 			case 'reset':
 				return actions.resetCounters();
 			case 'cancel':
@@ -164,6 +162,8 @@ export function renderPopup(root: HTMLElement, state: PopupState, actions: Popup
 				return actions.changeKey();
 			case 'remove':
 				return actions.removeKey();
+			case 'packs':
+				return actions.openPacks();
 		}
 	};
 }

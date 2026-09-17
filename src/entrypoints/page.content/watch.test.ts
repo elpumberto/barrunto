@@ -3,8 +3,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { send } from '@/messages';
 import type { Analysis } from '@/messages';
+import { pack as hn } from '@/packs/hn';
+import { page as hnPage } from '@/packs/hn/page';
+import { pack as x } from '@/packs/x';
+import { page as xPage } from '@/packs/x/page';
 import { connection, pageSettings } from '@/storage/session';
-import { watchPage } from './watch';
+import type { Settings } from '@/storage/types';
+import { watchPage as watch } from './watch';
 
 vi.mock('@/messages', () => ({ send: vi.fn() }));
 
@@ -34,7 +39,19 @@ class OnScreen {
 }
 
 const ctx = { isInvalid: false, onInvalidated: vi.fn() } as unknown as ContentScriptContext;
-const DWELL = 700;
+const DWELL = xPage.dwellMs;
+const watchPage = (at: ContentScriptContext) => watch(at, x, xPage);
+
+/** X.com on, and whatever else is said. */
+const chosen = (
+	change: Partial<Settings> = {},
+	sensitivity: 'low' | 'medium' = 'medium'
+): Settings => ({
+	paused: false,
+	tuning: false,
+	packs: { x: { enabled: true, sensitivity, options: {} } },
+	...change
+});
 
 function addPost(id: string): HTMLElement {
 	const article = document.createElement('article');
@@ -65,7 +82,7 @@ beforeEach(async () => {
 	vi.useFakeTimers();
 	vi.stubGlobal('IntersectionObserver', OnScreen);
 	await connection.setValue({ state: 'connected' });
-	await pageSettings.setValue({ paused: false, sensitivity: 'medium', tuning: false });
+	await pageSettings.setValue(chosen());
 });
 afterEach(() => {
 	vi.useRealTimers();
@@ -111,7 +128,7 @@ describe('watching the page', () => {
 		await vi.advanceTimersByTimeAsync(DWELL);
 		expect(labelsOn(article)).toEqual(['flame']);
 
-		await pageSettings.setValue({ paused: false, sensitivity: 'low', tuning: false });
+		await pageSettings.setValue(chosen({}, 'low'));
 		await settle();
 		expect(labelsOn(article)).toEqual([]);
 		expect(send).toHaveBeenCalledTimes(1);
@@ -144,14 +161,55 @@ describe('watching the page', () => {
 		await vi.advanceTimersByTimeAsync(DWELL);
 		expect(send).toHaveBeenCalledTimes(2);
 
-		await pageSettings.setValue({ paused: true, sensitivity: 'medium', tuning: false });
+		await pageSettings.setValue(chosen({ paused: true }));
 		await settle();
 		expect(labelsOn(painted)).toEqual(['flame']);
 		expect(OnScreen.last.watched.size).toBe(0);
 
-		await pageSettings.setValue({ paused: false, sensitivity: 'medium', tuning: false });
+		await pageSettings.setValue(chosen());
 		await settle();
 		expect(OnScreen.last.watched.has(failed)).toBe(true);
 		expect(OnScreen.last.watched.has(painted)).toBe(false);
+	});
+
+	it('lets go of the page when its pack is turned off', async () => {
+		const article = addPost('8');
+		await watchPage(ctx);
+		expect(OnScreen.last.watched.has(article)).toBe(true);
+
+		await pageSettings.setValue({ ...chosen(), packs: {} });
+		await settle();
+		expect(OnScreen.last.watched.size).toBe(0);
+	});
+
+	it('reads a page with the pack it is given, and lets the pack act on what it labels', async () => {
+		document.body.innerHTML = `<table class="fatitem"><tr><td><span class="titleline"><a href="#">A story</a></span></td></tr></table>
+			<table><tr class="athing comtr" id="9"><td><table><tr><td class="ind" indent="0"></td>
+			<td class="default"><a class="hnuser">someone</a><div class="comment"><div class="commtext">made-up words</div></div></td></tr></table></td></tr></table>`;
+		const row = document.getElementById('9')!;
+		const fading = { enabled: true, sensitivity: 'medium' as const, options: { fade: true } };
+		await pageSettings.setValue({ ...chosen(), packs: { hn: fading } });
+		vi.mocked(send).mockResolvedValue({
+			analyzed: true,
+			strengths: { insight: 0, snark: 0.9, tangent: 0 },
+			answers: {}
+		});
+
+		await watch(ctx, hn, hnPage);
+		OnScreen.last.show(row, 1);
+		await vi.advanceTimersByTimeAsync(hnPage.dwellMs);
+		expect(send).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'analyze',
+				packId: 'hn',
+				item: expect.objectContaining({ id: '9' })
+			})
+		);
+		expect(labelsOn(row)).toEqual(['snark']);
+		expect(row.querySelector<HTMLElement>('.commtext')!.style.opacity).toBe('0.45');
+
+		await pageSettings.setValue({ ...chosen(), packs: { hn: { ...fading, options: {} } } });
+		await settle();
+		expect(row.querySelector<HTMLElement>('.commtext')!.style.opacity).toBe('');
 	});
 });

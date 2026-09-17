@@ -7,10 +7,14 @@ const BADGE = { keyRejected: '#B3261E', trouble: '#9A6200' };
 const paths = (suffix: string) =>
 	Object.fromEntries(SIZES.map((size) => [size, `/icon/${size}${suffix}.png`]));
 
-/** In colour while reading, grey while stopped, with a warning mark when the key or Jev fails. */
+/** In colour while reading, grey while stopped or with no pack on, with a warning mark when the key or Jev fails. */
 async function paintIcon() {
-	const [{ paused }, status] = await Promise.all([settings.getValue(), connection.getValue()]);
-	const stopped = paused || status.state === 'noKey';
+	const [{ paused, packs }, status] = await Promise.all([
+		settings.getValue(),
+		connection.getValue()
+	]);
+	const noPackOn = !Object.values(packs).some((pack) => pack.enabled);
+	const stopped = paused || noPackOn || status.state === 'noKey';
 	const warning =
 		status.state === 'keyRejected' || status.state === 'trouble' ? BADGE[status.state] : null;
 

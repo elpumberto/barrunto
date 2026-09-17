@@ -1,6 +1,6 @@
 {
 	"name": "barrunto",
-	"description": "Reads posts on X.com as you browse, asks Jev about each one and hangs a label on it when it has something clear to say.",
+	"description": "Reads what you browse, asks Jev about each thing and hangs a label on it when it has something clear to say. One rule pack per site.",
 	"version": "1.0.0",
 	"private": true,
 	"type": "module",

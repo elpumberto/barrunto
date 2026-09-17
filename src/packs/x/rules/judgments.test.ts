@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { labelsFor, strengthsFor } from '@/engine';
-import type { Answers, Post, Sensitivity } from '@/engine';
+import type { Answers, Sensitivity } from '@/engine';
+import type { Post } from '../post';
 import { rules } from '.';
 
 /**

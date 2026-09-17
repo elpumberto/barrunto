@@ -1,15 +1,14 @@
+import { MatchPattern } from 'wxt/utils/match-patterns';
 import { createQueue, strengthsFor, wordingOf } from '@/engine';
-import type { Answers, Post } from '@/engine';
+import type { Answers, Item, Pack } from '@/engine';
 import { jev, JevError } from '@/jev';
 import type { Analysis, NotAnalyzed } from '@/messages';
-import { rules } from '@/packs/x/rules';
-import { apiKey, connection, countPost, settings, storeAnswers, storedAnswers } from '@/storage';
-import type { ConnectionStatus, Trouble } from '@/storage';
+import { packById } from '@/packs';
+import { apiKey, connection, countItem, settings, storeAnswers, storedAnswers } from '@/storage';
+import type { AnswersOf, ConnectionStatus, Trouble } from '@/storage';
 
 /** How many calls to Jev may be in flight at once. */
 const CALLS_IN_FLIGHT = 4;
-
-const WORDING = wordingOf(rules.traits);
 
 // The background may be put to sleep at any moment, so nothing that has to last lives in variables.
 // These two only matter while calls are in flight, and Chrome keeps the background awake for those.
@@ -18,9 +17,16 @@ const asking = new Map<string, Promise<Asked>>();
 
 type Asked = { answers: Answers } | { failure: NotAnalyzed };
 
-/** The strengths of a post's judgments, asking Jev only if the session has no answers for it yet. */
-export async function analyze(post: Post): Promise<Analysis> {
-	const [key, { paused }, status] = await Promise.all([
+/** Whether the page at this address is one of the pack's. */
+const actsOn = (pack: Pack, address: string) =>
+	pack.sites.some((site) => new MatchPattern(site).includes(address));
+
+/**
+ * The strengths of an item's judgments, asking Jev only if the session has no answers for it yet.
+ * `from` is the address of the page that asks: a pack answers only for its own sites, and only while it is on.
+ */
+export async function analyze(packId: string, item: Item, from: string): Promise<Analysis> {
+	const [key, { paused, packs }, status] = await Promise.all([
 		apiKey.getValue(),
 		settings.getValue(),
 		connection.getValue()
@@ -29,28 +35,35 @@ export async function analyze(post: Post): Promise<Analysis> {
 	if (paused) return { analyzed: false, reason: 'paused' };
 	if (status.state === 'keyRejected') return { analyzed: false, reason: 'keyRejected' };
 
-	const stored = await storedAnswers(post.id, WORDING);
-	const asked: Asked = stored ? { answers: stored } : await askOnce(key, post);
+	const pack = packById(packId);
+	if (!pack || !packs[pack.id]?.enabled || !actsOn(pack, from)) {
+		return { analyzed: false, reason: 'packOff' };
+	}
+
+	const of = { packId: pack.id, wording: wordingOf(pack.rules.traits), itemId: item.id };
+	const stored = await storedAnswers(of);
+	const asked: Asked = stored ? { answers: stored } : await askOnce(key, pack, item, of);
 	if ('failure' in asked) return { analyzed: false, reason: asked.failure };
 	const { answers } = asked;
-	return { analyzed: true, strengths: strengthsFor(rules, answers, post), answers };
+	return { analyzed: true, strengths: strengthsFor(pack.rules, answers, item), answers };
 }
 
-/** Two tabs asking about the same post at once share a single call. */
-function askOnce(key: string, post: Post): Promise<Asked> {
-	let pending = asking.get(post.id);
+/** Two tabs asking about the same item at once share a single call. */
+function askOnce(key: string, pack: Pack, item: Item, of: AnswersOf): Promise<Asked> {
+	const name = `${of.packId}:${of.itemId}`;
+	let pending = asking.get(name);
 	if (!pending) {
-		pending = ask(key, post).finally(() => asking.delete(post.id));
-		asking.set(post.id, pending);
+		pending = ask(key, pack, item, of).finally(() => asking.delete(name));
+		asking.set(name, pending);
 	}
 	return pending;
 }
 
 /** Jev's answers, stored and counted; or, if the call fails, the reason, noted in the connection status. */
-async function ask(key: string, post: Post): Promise<Asked> {
+async function ask(key: string, { rules }: Pack, item: Item, of: AnswersOf): Promise<Asked> {
 	let asked;
 	try {
-		asked = await queue.add(() => jev.ask(key, rules.present(post), rules.traits));
+		asked = await queue.add(() => jev.ask(key, rules.present(item), rules.traits));
 	} catch (error) {
 		const failure = error instanceof JevError ? error.failure : 'serviceDown';
 		if (failure === 'keyRejected') {
@@ -66,8 +79,8 @@ async function ask(key: string, post: Post): Promise<Asked> {
 
 	await note(key, { state: 'connected' });
 	// Jev has answered and the tokens are spent: trouble keeping the answers does not take the label away.
-	await Promise.all([storeAnswers(post.id, WORDING, asked.answers), countPost(asked.usage)]).catch(
-		(error) => console.error('[barrunto] could not keep the answers', error)
+	await Promise.all([storeAnswers(of, asked.answers), countItem(asked.usage)]).catch((error) =>
+		console.error('[barrunto] could not keep the answers', error)
 	);
 	return { answers: asked.answers };
 }

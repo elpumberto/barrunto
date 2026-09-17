@@ -3,7 +3,7 @@ import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { listen } from './messages';
 
 const handlers = {
-	analyzePost: vi.fn(async () => ({ analyzed: false as const, reason: 'paused' as const })),
+	analyze: vi.fn(async () => ({ analyzed: false as const, reason: 'paused' as const })),
 	checkKey: vi.fn(async () => ({ ok: true as const })),
 	forgetKey: vi.fn(async () => {}),
 	resetCounters: vi.fn(async () => {})
@@ -32,11 +32,12 @@ describe('listen', () => {
 		expect(deliver({ type: 'checkKey', apiKey: 'k' }, fromPopupInATab(), vi.fn())).toBe(true);
 	});
 
-	it('takes analyses only from the X.com page', () => {
-		const post = { type: 'analyzePost', post: {} };
-		expect(deliver(post, fromPage('https://x.com/home'), vi.fn())).toBe(true);
-		expect(deliver(post, fromPage('https://elsewhere.example/'), vi.fn())).toBeUndefined();
-		expect(deliver(post, fromPopup(), vi.fn())).toBeUndefined();
+	it('takes analyses only from a page, and tells the handler which', () => {
+		const item = { type: 'analyze', packId: 'x', item: {} };
+		expect(deliver(item, fromPage('https://x.com/home'), vi.fn())).toBe(true);
+		expect(handlers.analyze).toHaveBeenCalledWith(item, 'https://x.com/home');
+		expect(deliver(item, fromPopup(), vi.fn())).toBeUndefined();
+		expect(deliver(item, { id: ours(), tab: { id: 1 } }, vi.fn())).toBeUndefined();
 	});
 
 	it('does not let the page touch the key or the counters', () => {

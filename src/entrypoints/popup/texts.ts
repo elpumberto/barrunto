@@ -1,7 +1,8 @@
 import type { KeyFailure } from '@/messages';
-import type { Sensitivity, Trouble } from '@/storage/types';
+import type { Trouble } from '@/storage/types';
 
-const meanwhile = 'Posts stay unlabelled meanwhile; Barrunto tries again with the next one.';
+const meanwhile =
+	'Nothing gets a label meanwhile; Barrunto tries again with the next thing it reads.';
 
 export const texts = {
 	status: {
@@ -29,31 +30,26 @@ export const texts = {
 		} satisfies Record<KeyFailure, string>
 	},
 	reading: {
-		on: { title: 'Reading posts on X.com', help: 'Asks Jev once per post.' },
+		on: { title: 'Reading', help: 'Asks Jev once about each thing it reads.' },
 		off: { title: 'Paused', help: 'Reads nothing, asks nothing. Labels already up stay.' }
 	},
-	sensitivity: {
-		title: 'Sensitivity',
-		stops: { low: 'Low', medium: 'Medium', high: 'High', ultra: 'Ultra' } satisfies Record<
-			Sensitivity,
-			string
-		>,
-		help: {
-			low: 'Only the clear cases. Few labels, few misses.',
-			medium: 'A balance.',
-			high: 'Labels more, and gets more wrong.',
-			ultra: 'Labels at the faintest hunch. Expect plenty of misses.'
-		} satisfies Record<Sensitivity, string>
+	packs: {
+		open: 'Rule packs',
+		noneOn: 'No rule pack is on, so Barrunto reads nothing. Choose where it should act.',
+		notHere: 'No rule pack is on for this page.'
 	},
 	counters: {
 		session: 'This session',
 		total: 'Total',
-		posts: 'Posts analyzed',
+		items: 'Analyzed',
 		tokensIn: 'Tokens in',
 		tokensOut: 'Tokens out',
 		reset: 'Reset counters'
 	},
-	tuning: { title: 'Tuning mode', help: 'Shows trait answers and strengths under each post.' },
+	tuning: {
+		title: 'Tuning mode',
+		help: 'Shows trait answers and strengths under each thing it reads.'
+	},
 	trouble: {
 		tooManyCalls: `Jev is asking Barrunto to slow down. ${meanwhile}`,
 		serviceDown: `Jev is not answering (service down). ${meanwhile}`,

@@ -1,6 +1,8 @@
 // Loads the built extension into a headless Chrome and walks the whole path once, with no network:
-// a bad key, a good key, a made-up x.com page, labels on the posts that dwell, a change of
-// sensitivity reaching the page, counters in the popup. It needs the stand-in build: `npm run smoke`.
+// a bad key, a good key, a pack turned on in the packs page, a made-up x.com page, labels on the
+// posts that dwell, a change of sensitivity reaching the page, counters in the popup; then the same
+// for a made-up Hacker News thread, with a pack that stays off acting nowhere.
+// It needs the stand-in build, which also holds leave for every pack's site: `npm run smoke`.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -25,15 +27,26 @@ const post = (n) => `<article data-testid="tweet" style="position:relative;heigh
 			<button data-testid="like" aria-label="${n * 7} Likes. Like"></button></div></div></article>`;
 const home = `<!doctype html><body style="margin:0;background:#fff">${Array.from({ length: POSTS }, (_, n) => post(n)).join('')}</body>`;
 
-const labelsOnPage = (page) =>
-	page.$$eval('article', (articles) =>
-		articles.map((article) =>
-			[
-				...(article
-					.querySelector(':scope > [data-barrunto="labels"]')
-					?.shadowRoot?.querySelectorAll('.label') ?? [])
-			].map((label) => label.dataset.id)
-		)
+const comment = (
+	n
+) => `<tr class="athing comtr" id="${2000 + n}"><td><table><tr><td class="ind" indent="0"></td>
+	<td class="default" style="height:160px"><span class="comhead"><a class="hnuser">user${n}</a></span>
+		<div class="comment"><div class="commtext">Made-up comment number ${n}, with a few words in it.</div></div></td></tr></table></td></tr>`;
+const thread = `<!doctype html><body style="margin:0"><table class="fatitem"><tr><td><span class="titleline"><a href="#">A made-up story</a></span></td></tr></table>
+	<table>${Array.from({ length: 3 }, (_, n) => comment(n)).join('')}</table></body>`;
+
+const labelsOnPage = (page, items = 'article', anchor = ':scope >') =>
+	page.$$eval(
+		items,
+		(articles, anchor) =>
+			articles.map((article) =>
+				[
+					...(article
+						.querySelector(`${anchor} [data-barrunto="labels"]`)
+						?.shadowRoot?.querySelectorAll('.label') ?? [])
+				].map((label) => label.dataset.id)
+			),
+		anchor
 	);
 
 const browser = await puppeteer.launch({
@@ -60,18 +73,31 @@ try {
 	await popup.$eval('#key', (field) => (field.value = ''));
 	await popup.type('#key', 'any-key-1234');
 	await popup.click('.go');
-	await popup.waitForSelector('.stops');
+	await popup.waitForSelector('.counters');
 	assert.match(await popup.$eval('.key span', (el) => el.textContent), /1234$/);
+	assert.match(await popup.$eval('.warning', (el) => el.textContent), /No rule pack is on/);
+
+	// Nothing acts anywhere until its pack is turned on, in the packs page.
+	const packs = await browser.newPage();
+	packs.on('pageerror', (error) => errors.push(`packs: ${error.message}`));
+	await packs.goto(`chrome-extension://${extension}/options.html`);
+	const turnOn = async (pack) => {
+		await packs.bringToFront();
+		await packs.click(`[data-action="enable"][data-pack="${pack}"]`);
+		await packs.waitForSelector(`.card[data-pack="${pack}"] .stops`);
+	};
+	await turnOn('x');
 
 	const page = await browser.newPage();
 	page.on('pageerror', (error) => errors.push(`page: ${error.message}`));
 	await page.setViewport({ width: 700, height: 160 * ON_SCREEN });
 	await page.setRequestInterception(true);
-	page.on('request', (request) =>
-		request.url().startsWith('https://x.com/')
-			? request.respond({ contentType: 'text/html', body: home })
-			: request.abort()
-	);
+	const SITES = { 'https://x.com/': home, 'https://news.ycombinator.com/': thread };
+	page.on('request', (request) => {
+		const body = Object.entries(SITES).find(([site]) => request.url().startsWith(site))?.[1];
+		return body ? request.respond({ contentType: 'text/html', body }) : request.abort();
+	});
+	await page.bringToFront();
 	await page.goto('https://x.com/home');
 
 	// The posts on screen dwell, get analyzed and are counted; the ones below are left alone.
@@ -85,7 +111,8 @@ try {
 
 	// A change of sensitivity in the popup reaches the page and repaints it without asking again.
 	const onMedium = (await labelsOnPage(page)).flat().length;
-	await popup.click('[data-action="sensitivity"][data-value="ultra"]');
+	await packs.bringToFront();
+	await packs.click('[data-action="sensitivity"][data-pack="x"][data-value="ultra"]');
 	await page.bringToFront();
 	await page.waitForFunction(
 		(before) =>
@@ -104,7 +131,29 @@ try {
 	assert.equal(await analyzed(), ON_SCREEN, 'moving the sensitivity asks Jev nothing');
 	assert.ok(onUltra > onMedium, 'ultra labels more than medium');
 	assert.ok(labels.slice(ON_SCREEN + 1).flat().length === 0, 'posts never on screen get no label');
-	assert.deepEqual(errors, [], 'nothing threw in the popup or the page');
+
+	// A pack that is off acts nowhere; turned on, it reads its own site with its own labels.
+	await page.bringToFront();
+	await page.goto('https://news.ycombinator.com/item?id=1');
+	await new Promise((resolve) => setTimeout(resolve, 2500));
+	assert.equal(await page.$('[data-barrunto]'), null, 'a pack that is off leaves its site alone');
+	await turnOn('hn');
+	await packs.click('[data-action="sensitivity"][data-pack="hn"][data-value="ultra"]');
+	await page.bringToFront();
+	await page.reload();
+	await page.waitForFunction(`(${looked.toString().replace('article >', '.comhead >')})() === 3`, {
+		timeout: 15000
+	});
+	const onThread = await labelsOnPage(page, 'tr.comtr', '.comhead >');
+	console.log('labels per comment on ultra:', JSON.stringify(onThread));
+	assert.ok(
+		onThread.flat().every((id) => ['insight', 'snark', 'tangent'].includes(id)),
+		'comments get the labels of their own pack'
+	);
+	await popup.bringToFront();
+	assert.equal(await analyzed(), ON_SCREEN + 3, 'comments are counted with the posts');
+
+	assert.deepEqual(errors, [], 'nothing threw in the popup, the packs page or the page');
 	console.log('ok');
 } finally {
 	await browser.close();
