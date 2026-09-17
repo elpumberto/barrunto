@@ -520,3 +520,18 @@ p.row {
 label {
 	cursor: pointer;
 }
+
+/* What is done to what a noise judgment labels: its label, and three stops. */
+.treatment .chip {
+	flex: none;
+}
+
+.stops.three {
+	grid-template-columns: repeat(3, 1fr);
+	width: 168px;
+}
+
+.stops.three button {
+	padding: 3px 0;
+	font-size: 12px;
+}

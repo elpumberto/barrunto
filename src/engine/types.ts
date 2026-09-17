@@ -45,7 +45,13 @@ export interface Judgment {
 	/** The minimum strength to be painted, per sensitivity position. */
 	thresholds: Record<Sensitivity, number>;
 	label: Label;
+	/** Whether it is a kind of thing the user may rather not see: only those can be faded or hidden. */
+	noise: boolean;
 }
+
+/** What is done to an item that gets the label of a noise judgment: label it and no more, fade it, or fold it away. */
+export const TREATMENTS = ['label', 'fade', 'hide'] as const;
+export type Treatment = (typeof TREATMENTS)[number];
 
 /** How a judgment is painted. Colours and glyph are the pack's; the shape is the painter's. */
 export interface Label {
@@ -110,6 +116,8 @@ export type Options = Record<string, boolean>;
 export interface PackSettings {
 	enabled: boolean;
 	sensitivity: Sensitivity;
+	/** What is done to what each noise judgment labels, by judgment id. */
+	treatments: Record<string, Treatment>;
 	options: Options;
 }
 
@@ -151,11 +159,22 @@ export interface PageHalf<I extends Item = Item> {
 	read(element: HTMLElement): Reading<I>;
 	/** How long an item has to stay on screen before it is analyzed, in milliseconds. */
 	dwellMs: number;
-	/** The element the labels go in. */
+	/**
+	 * The element the labels go in. It may be outside the item's own element, where that one would
+	 * clip them; whatever was left in it by an item the page has since taken away is cleared.
+	 */
 	labelAnchor(element: HTMLElement): HTMLElement;
-	labelPlace: LabelPlace;
+	/** Where in the anchor they go: the same for every item, or worked out for each where the page is not regular. */
+	labelPlace: LabelPlace | ((element: HTMLElement) => LabelPlace);
 	/** The element the tuning detail goes at the end of. */
 	tuningAnchor(element: HTMLElement): HTMLElement;
+	/**
+	 * What of the item goes when the user would rather not see it. Faded, its words and what goes
+	 * with them. Hidden, all of it, with who wrote it: a line saying that it is hidden takes its
+	 * place, at the end of the parent of the first of these. Labels that are hidden with it are
+	 * named in that line.
+	 */
+	parts(element: HTMLElement): { faded: HTMLElement[]; hidden: HTMLElement[] };
 	/**
 	 * What the pack does to an item besides labelling it, given the labels it got and how the pack's
 	 * controls stand. Called again whenever either changes, so it has to undo as well as do.

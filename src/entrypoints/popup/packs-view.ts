@@ -1,6 +1,6 @@
 import { packSettingsOf } from '@/engine';
 import type { Label, Pack } from '@/engine';
-import { toggle } from './pack-controls';
+import { chip, toggle } from './pack-controls';
 import type { PopupState } from './view';
 import { texts } from './texts';
 
@@ -8,8 +8,7 @@ import { texts } from './texts';
 // is not here but in the home view, over a page of that pack, where what it does is in sight.
 
 /** A label as it goes on a page, with what it means next to it. */
-const legend = ({ text, hint, glyph, color, ink }: Label) =>
-	`<li><span class="chip" style="--color:${color};--ink:${ink}"><svg viewBox="0 0 12 12" aria-hidden="true">${glyph}</svg>${text}</span><span class="help">${hint}</span></li>`;
+const legend = (label: Label) => `<li>${chip(label)}<span class="help">${label.hint}</span></li>`;
 
 /** `https://x.com/*` reads better as `x.com`. */
 export const siteName = (site: string) => site.replace(/^[^/]*\/\/|\/\*$/g, '');

@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { commentId, findComments, labelAnchor, readComment, tuningAnchor } from './read';
+import {
+	commentId,
+	commentParts,
+	findComments,
+	labelAnchor,
+	readComment,
+	tuningAnchor
+} from './read';
 
 /** Pages cut from Hacker News's real markup, down to the bones and with everyone's names and words replaced. */
 const samples = import.meta.glob<string>('./samples/*.html', {
@@ -91,5 +98,19 @@ describe('readComment, on samples of the real page', () => {
 		const row = open('thread')('1001');
 		expect(labelAnchor(row).className).toBe('comhead');
 		expect(tuningAnchor(row).className).toBe('comment');
+	});
+
+	it('fades the words of a comment and hides all of it, header too, but not what Barrunto put there', () => {
+		const row = open('thread')('1001');
+		const cell = row.querySelector('td.default')!;
+		cell.append(Object.assign(document.createElement('div'), { id: 'ours' }));
+		cell.lastElementChild!.setAttribute('data-barrunto', 'fold');
+
+		const { faded, hidden } = commentParts(row);
+		expect(faded.map((part) => part.className)).toEqual(['comment']);
+		expect(hidden).toContain(row.querySelector('.comhead')!.parentElement);
+		expect(hidden).toContain(row.querySelector('.comment'));
+		expect(hidden.map((part) => part.id)).not.toContain('ours');
+		expect(hidden.every((part) => part.parentElement === cell)).toBe(true);
 	});
 });

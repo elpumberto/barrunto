@@ -109,10 +109,40 @@ export function readPost(article: HTMLElement): Reading<Post> {
 }
 
 /**
- * Where the label hangs: from the post itself, which is where X.com leaves room for it.
- * If X.com's layout changes, this and the pack's `labelPlace` are what move.
+ * Where the labels hang: from the line above the post. That line is the edge of the timeline's box,
+ * and the post starts a little under it, how far depending on what comes before. The post clips
+ * what sticks out of it, so the labels go in the box, not in the post. If X.com's layout changes,
+ * this and the pack's `labelPlace` are what move.
  */
-export const labelAnchor = (article: HTMLElement): HTMLElement => article;
+export const labelAnchor = (article: HTMLElement): HTMLElement =>
+	article.closest<HTMLElement>(selectors.cell) ?? article;
+
+/** Clear of X.com's own two buttons in that corner: Grok's and the menu. */
+const FROM_THE_RIGHT = '84px';
+/** A box this short with nothing in it is a gap X.com leaves, after a module such as "Who to follow". */
+const GAP_AT_MOST = 24;
+/** Inside a gap, the line is an element this thin at most. */
+const LINE_AT_MOST = 2;
+
+/**
+ * The line above a post is, as a rule, the lower edge of the box right above, and the post's own box
+ * starts under it. But after a module X.com leaves an empty box as a gap, and draws the line inside
+ * it, with air on both sides: there the labels hang from wherever that line turns out to be.
+ */
+export function labelPlace(article: HTMLElement): { top: string; right: string } {
+	const cell = article.closest(selectors.cell);
+	const above = cell?.previousElementSibling;
+	const height = above?.getBoundingClientRect().height ?? 0;
+	if (!cell || !above || above.textContent?.trim() || height <= 0 || height > GAP_AT_MOST) {
+		return { top: '0', right: FROM_THE_RIGHT };
+	}
+	const line = [...above.querySelectorAll('*')].find((inside) => {
+		const thickness = inside.getBoundingClientRect().height;
+		return thickness > 0 && thickness <= LINE_AT_MOST;
+	});
+	const from = (line ?? above).getBoundingClientRect().top - cell.getBoundingClientRect().top;
+	return { top: `${Math.round(from)}px`, right: FROM_THE_RIGHT };
+}
 
 /** Where the tuning detail goes: at the end of the post's content, under the row of buttons. */
 export function tuningAnchor(article: HTMLElement): HTMLElement {

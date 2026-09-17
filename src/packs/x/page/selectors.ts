@@ -4,6 +4,8 @@
  */
 export const selectors = {
 	post: 'article[data-testid="tweet"]',
+	/** The box of the timeline a post sits in. The line between posts is its edge, not the post's. */
+	cell: '[data-testid="cellInnerDiv"]',
 	/** Links whose address carries a post's id. The post's own is the one around its time. */
 	permalink: 'a[href*="/status/"]',
 	time: 'time',

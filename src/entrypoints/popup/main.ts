@@ -69,6 +69,13 @@ const actions: PopupActions = {
 		const pack = packById(packId);
 		if (pack) void changePack(pack, () => ({ sensitivity }));
 	},
+	setTreatment: (packId, judgmentId, treatment) => {
+		const pack = packById(packId);
+		if (!pack) return;
+		void changePack(pack, ({ treatments }) => ({
+			treatments: { ...treatments, [judgmentId]: treatment }
+		}));
+	},
 	setOption: (packId, controlId, on) => {
 		const pack = packById(packId);
 		if (pack)

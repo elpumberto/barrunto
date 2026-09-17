@@ -196,6 +196,25 @@ try {
 		onThread.flat().every((id) => ['insight', 'snark', 'tangent'].includes(id)),
 		'comments get the labels of their own pack'
 	);
+
+	// What the user would rather not see is folded away, and nothing else is.
+	await overThePage(/Hacker News/, async (real) => {
+		await real.click('[data-fold="noise"] summary');
+		await real.click('[data-action="treatment"][data-value="snark:hide"]');
+	});
+	await page.bringToFront();
+	await page.waitForFunction(() => document.querySelector('[data-barrunto="fold"]'), {
+		timeout: 5000
+	});
+	const folded = await page.$$eval('tr.comtr', (rows) =>
+		rows.map((row) => row.querySelector('[data-barrunto="fold"]') !== null)
+	);
+	assert.deepEqual(
+		folded,
+		onThread.map((ids) => ids.includes('snark')),
+		'what is labelled Snark is folded away, whatever else it is labelled, and nothing else is'
+	);
+
 	await popup.bringToFront();
 	assert.equal(
 		await analyzed(),

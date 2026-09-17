@@ -17,7 +17,8 @@ const insight: Judgment = {
 		{ kind: 'trait', id: 'meta', weight: -0.2 }
 	],
 	thresholds,
-	label: labels.insight
+	label: labels.insight,
+	noise: false
 };
 
 const snark: Judgment = {
@@ -29,7 +30,8 @@ const snark: Judgment = {
 		{ kind: 'trait', id: 'teaches', weight: -0.3 }
 	],
 	thresholds,
-	label: labels.snark
+	label: labels.snark,
+	noise: true
 };
 
 const tangent: Judgment = {
@@ -40,7 +42,8 @@ const tangent: Judgment = {
 		{ kind: 'trait', id: 'teaches', weight: -0.2 }
 	],
 	thresholds,
-	label: labels.tangent
+	label: labels.tangent,
+	noise: true
 };
 
 /** In the order their labels hang. */

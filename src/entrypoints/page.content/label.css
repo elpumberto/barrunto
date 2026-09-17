@@ -1,0 +1,114 @@
+/* A label, wherever it goes: hanging from an item, in line in its header, or in the line that stands for a hidden one. */
+.label {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	transform-origin: 50% 0;
+	transform: rotate(-3deg);
+	pointer-events: auto;
+	cursor: help;
+}
+
+.label:nth-child(even) {
+	transform: rotate(2.5deg);
+}
+
+.string {
+	width: 1px;
+	height: 7px;
+	background: #8b98a5;
+}
+
+.card {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 2px 8px 2px 7px;
+	border-radius: 3px 3px 5px 5px;
+	background: var(--color);
+	color: var(--ink);
+	font-size: 11px;
+	font-weight: 800;
+	line-height: 16px;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+	white-space: nowrap;
+	box-shadow:
+		0 1px 2px rgb(0 0 0 / 35%),
+		inset 0 0 0 1px rgb(0 0 0 / 18%);
+}
+
+svg {
+	width: 11px;
+	height: 11px;
+	flex: none;
+}
+
+@keyframes drop {
+	from {
+		opacity: 0;
+		transform: translateY(-16px) rotate(0);
+	}
+	60% {
+		transform: translateY(0) rotate(5deg);
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	.arrive {
+		animation: drop 0.45s ease-out;
+	}
+}
+
+/* Jev is being asked: Barrunto's mark and three dots taking turns, until the labels come, or none do. */
+.waiting {
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	padding: 3px 6px;
+	border-radius: 9px;
+	background: rgb(127 127 127 / 18%);
+	pointer-events: auto;
+	cursor: progress;
+}
+
+.waiting svg {
+	width: 12px;
+	height: 12px;
+	margin-right: 1px;
+}
+
+.dot {
+	width: 3px;
+	height: 3px;
+	border-radius: 50%;
+	background: #8b98a5;
+}
+
+@keyframes turn {
+	0%,
+	60%,
+	100% {
+		opacity: 0.25;
+	}
+	30% {
+		opacity: 1;
+	}
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	.dot {
+		animation: turn 1.2s infinite;
+	}
+
+	.dot:nth-of-type(2) {
+		animation-delay: 0.2s;
+	}
+
+	.dot:nth-of-type(3) {
+		animation-delay: 0.4s;
+	}
+}

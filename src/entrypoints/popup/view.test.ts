@@ -10,7 +10,7 @@ const connected: PopupState = {
 		paused: false,
 		tuning: false,
 		lookAhead: 10,
-		packs: { x: { enabled: true, sensitivity: 'medium', options: {} } }
+		packs: { x: { enabled: true, sensitivity: 'medium', treatments: {}, options: {} } }
 	},
 	packs: [x, hn],
 	pack: x,
@@ -31,6 +31,7 @@ const actions = {
 	setPaused: vi.fn(),
 	setSensitivity: vi.fn(),
 	setOption: vi.fn(),
+	setTreatment: vi.fn(),
 	setTuning: vi.fn(),
 	setLookAhead: vi.fn(),
 	resetCounters: vi.fn(),
@@ -104,14 +105,37 @@ describe('the popup', () => {
 	});
 
 	it('shows the controls of the pack of this page, its own ones too, and sends them to their actions', () => {
-		const chosen = { enabled: true, sensitivity: 'high' as const, options: {} };
-		draw({ pack: hn, settings: { ...connected.settings, packs: { hn: chosen } } });
+		// Hacker News, as if it brought a control of its own.
+		const loud = { id: 'loud', title: 'Loud', help: '', initial: false };
+		const chosen = { enabled: true, sensitivity: 'high' as const, treatments: {}, options: {} };
+		draw({
+			pack: { ...hn, controls: [loud] },
+			settings: { ...connected.settings, packs: { hn: chosen } }
+		});
 		expect(root.querySelector('.eyebrow')!.textContent).toBe('Hacker News');
 		expect(root.querySelector('[aria-pressed="true"]')!.textContent).toBe('High');
-		const fade = root.querySelector('[data-action="option"][data-value="fade"]')!;
-		expect(fade.getAttribute('aria-checked')).toBe('false');
-		click('[data-action="option"][data-value="fade"]');
-		expect(actions.setOption).toHaveBeenCalledWith('hn', 'fade', true);
+		const own = root.querySelector('[data-action="option"][data-value="loud"]')!;
+		expect(own.getAttribute('aria-checked')).toBe('false');
+		click('[data-action="option"][data-value="loud"]');
+		expect(actions.setOption).toHaveBeenCalledWith('hn', 'loud', true);
+	});
+
+	it('lets each kind of noise be labelled, faded or hidden, and never what is not noise', () => {
+		const treatments = { snark: 'hide' as const };
+		const chosen = { enabled: true, sensitivity: 'medium' as const, treatments, options: {} };
+		draw({ pack: hn, settings: { ...connected.settings, packs: { hn: chosen } } });
+		const noise = root.querySelector('[data-fold="noise"]')!;
+		expect(noise.querySelector('.brief')!.textContent).toBe('1 faded · 1 hidden');
+		expect([...noise.querySelectorAll('.chip')].map((c) => c.textContent)).toEqual([
+			'Snark',
+			'Tangent'
+		]);
+		expect([...noise.querySelectorAll('[aria-pressed="true"]')].map((b) => b.textContent)).toEqual([
+			'Hide',
+			'Fade'
+		]);
+		click('[data-action="treatment"][data-value="tangent:label"]');
+		expect(actions.setTreatment).toHaveBeenCalledWith('hn', 'tangent', 'label');
 	});
 
 	it('offers the pack of this page while it is off, and says so when the page has none', () => {

@@ -12,9 +12,12 @@ function focusedIn(root: HTMLElement): string | null {
 	return `[data-action="${action}"]${pack ? `[data-pack="${pack}"]` : ''}${value ? `[data-value="${value}"]` : ''}`;
 }
 
-/** A part that shows one line until it is opened. `brief` is what that line says besides its title. */
+/**
+ * A part that shows one line until it is opened. `brief` is what that line says besides its title.
+ * Folds share a name, so opening one closes the others and the popup never outgrows its window.
+ */
 export const fold = (name: string, title: string, brief: string, body: string) =>
-	`<details class="fold" data-fold="${name}"><summary data-fold="${name}"><span class="title">${title}</span><span class="brief">${brief}</span></summary>
+	`<details class="fold" name="fold" data-fold="${name}"><summary data-fold="${name}"><span class="title">${title}</span><span class="brief">${brief}</span></summary>
 		<div class="folded">${body}</div></details>`;
 
 /** Draws `html` inside `root`, and leaves the focus and the open folds where they were. */

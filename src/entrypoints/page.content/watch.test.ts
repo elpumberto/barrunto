@@ -50,7 +50,7 @@ const chosen = (
 	paused: false,
 	tuning: false,
 	lookAhead: 0,
-	packs: { x: { enabled: true, sensitivity, options: {} } },
+	packs: { x: { enabled: true, sensitivity, treatments: {}, options: {} } },
 	...change
 });
 
@@ -244,34 +244,90 @@ describe('watching the page', () => {
 		expect(OnScreen.last.watched.size).toBe(0);
 	});
 
-	it('reads a page with the pack it is given, and lets the pack act on what it labels', async () => {
-		document.body.innerHTML = `<table class="fatitem"><tr><td><span class="titleline"><a href="#">A story</a></span></td></tr></table>
-			<table><tr class="athing comtr" id="9"><td><table><tr><td class="ind" indent="0"></td>
-			<td class="default"><a class="hnuser">someone</a><div class="comment"><div class="commtext">made-up words</div></div></td></tr></table></td></tr></table>`;
-		const row = document.getElementById('9')!;
-		const fading = { enabled: true, sensitivity: 'medium' as const, options: { fade: true } };
-		await pageSettings.setValue({ ...chosen(), packs: { hn: fading } });
-		vi.mocked(send).mockResolvedValue({
+	describe('with another pack', () => {
+		const snarky: Analysis = {
 			analyzed: true,
 			strengths: { insight: 0, snark: 0.9, tangent: 0 },
 			answers: {}
+		};
+		const asking = (treatments: Record<string, 'label' | 'fade' | 'hide'>, loud = false) => ({
+			...chosen(),
+			packs: {
+				hn: { enabled: true, sensitivity: 'medium' as const, treatments, options: { loud } }
+			}
+		});
+		let row: HTMLElement;
+		const words = () => row.querySelector<HTMLElement>('.comment')!;
+		const foldLine = () =>
+			row.querySelector('[data-barrunto="fold"]')?.shadowRoot?.querySelector('.folded');
+
+		beforeEach(() => {
+			document.body.innerHTML = `<table class="fatitem"><tr><td><span class="titleline"><a href="#">A story</a></span></td></tr></table>
+				<table><tr class="athing comtr" id="9"><td><table><tr><td class="ind" indent="0"></td>
+				<td class="default"><span class="comhead"><a class="hnuser">someone</a></span><div class="comment"><div class="commtext">made-up words</div></div></td></tr></table></td></tr></table>`;
+			row = document.getElementById('9')!;
+			vi.mocked(send).mockResolvedValue(snarky);
 		});
 
-		await watch(ctx, hn, hnPage);
-		OnScreen.last.show(row, 1);
-		await vi.advanceTimersByTimeAsync(hnPage.dwellMs);
-		expect(send).toHaveBeenCalledWith(
-			expect.objectContaining({
-				type: 'analyze',
-				packId: 'hn',
-				item: expect.objectContaining({ id: '9' })
-			})
-		);
-		expect(labelsOn(row)).toEqual(['snark']);
-		expect(row.querySelector<HTMLElement>('.commtext')!.style.opacity).toBe('0.45');
+		it('reads the page with the pack it is given, and lets the pack act on what it labels', async () => {
+			const act = vi.fn();
+			await pageSettings.setValue(asking({}, true));
+			await watch(ctx, hn, { ...hnPage, act });
+			OnScreen.last.show(row, 1);
+			await vi.advanceTimersByTimeAsync(hnPage.dwellMs);
+			expect(send).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'analyze',
+					packId: 'hn',
+					item: expect.objectContaining({ id: '9' })
+				})
+			);
+			expect(labelsOn(row)).toEqual(['snark']);
+			expect(act).toHaveBeenLastCalledWith(row, [expect.objectContaining({ id: 'snark' })], {
+				loud: true
+			});
+		});
 
-		await pageSettings.setValue({ ...chosen(), packs: { hn: { ...fading, options: {} } } });
-		await settle();
-		expect(row.querySelector<HTMLElement>('.commtext')!.style.opacity).toBe('');
+		it('fades or folds away what the user asks, as they ask it, and shows it after all on a click', async () => {
+			await pageSettings.setValue(asking({ snark: 'fade' }));
+			await watch(ctx, hn, hnPage);
+			OnScreen.last.show(row, 1);
+			await vi.advanceTimersByTimeAsync(hnPage.dwellMs);
+			expect(words().style.opacity).toBe('0.45');
+			expect(foldLine()).toBeUndefined();
+
+			await pageSettings.setValue(asking({ snark: 'hide' }));
+			await settle();
+			expect(words().style.display).toBe('none');
+			expect(words().style.opacity).toBe('');
+			// The header goes too, labels and all: the line takes the place of the comment, and names them.
+			expect(row.querySelector<HTMLElement>('.comhead')!.style.display).toBe('none');
+			expect(foldLine()!.textContent).toContain('Hidden by Barrunto');
+			expect(foldLine()!.querySelector<HTMLElement>('.label')!.dataset.id).toBe('snark');
+
+			foldLine()!.querySelector('button')!.click();
+			expect(words().style.display).toBe('');
+			expect(row.querySelector<HTMLElement>('.comhead')!.style.display).toBe('');
+			expect(labelsOn(row)).toEqual(['snark']);
+			expect(foldLine()).toBeUndefined();
+			// Seen once, it stays in sight whatever is painted again.
+			await pageSettings.setValue(asking({ snark: 'hide' }, true));
+			await settle();
+			expect(words().style.display).toBe('');
+		});
+
+		it('fades noise the user has said nothing about, and leaves alone what they asked only to label', async () => {
+			await pageSettings.setValue(asking({}));
+			await watch(ctx, hn, hnPage);
+			OnScreen.last.show(row, 1);
+			await vi.advanceTimersByTimeAsync(hnPage.dwellMs);
+			expect(words().style.opacity).toBe('0.45');
+
+			await pageSettings.setValue(asking({ snark: 'label', tangent: 'hide' }));
+			await settle();
+			expect(words().style.opacity).toBe('');
+			expect(words().style.display).toBe('');
+			expect(foldLine()).toBeUndefined();
+		});
 	});
 });

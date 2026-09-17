@@ -1,4 +1,5 @@
 import type { KeyFailure } from '@/messages';
+import type { Treatment } from '@/engine';
 import type { Sensitivity, Trouble } from '@/storage/types';
 
 const meanwhile =
@@ -67,6 +68,13 @@ export const texts = {
 		tokensIn: 'Tokens in',
 		tokensOut: 'Tokens out',
 		reset: 'Reset counters'
+	},
+	noise: {
+		title: 'Noise',
+		treatments: { label: 'Label', fade: 'Fade', hide: 'Hide' } satisfies Record<Treatment, string>,
+		brief: (faded: number, hidden: number) =>
+			[faded && `${faded} faded`, hidden && `${hidden} hidden`].filter(Boolean).join(' · ') ||
+			'only labelled'
 	},
 	ahead: {
 		title: 'Read ahead',

@@ -1,11 +1,14 @@
 import { SENSITIVITIES } from '@/engine';
-import type { Judgment, LabelPlace, Sensitivity } from '@/engine';
+import type { Judgment, LabelPlace, Sensitivity, Treatment } from '@/engine';
+import foldCss from './fold.css?inline';
 import type { Ground } from './ground';
 import logo from '@/assets/icon.svg?raw';
-import labelsCss from './labels.css?inline';
+import labelCss from './label.css?inline';
+import labelsHostCss from './labels.css?inline';
 import type { Tuning } from './tuning';
 import tuningCss from './tuning.css?inline';
 
+const labelsCss = labelCss + labelsHostCss;
 const MARK = 'data-barrunto';
 const SVG = 'http://www.w3.org/2000/svg';
 
@@ -95,6 +98,11 @@ export function paintLabels(
 	root.append(...wanted);
 }
 
+/** Takes away the labels in the anchor, and the place they were in. */
+export function clearLabels(anchor: HTMLElement): void {
+	anchor.querySelector(`:scope > [${MARK}="labels"]`)?.remove();
+}
+
 /**
  * Says, where the labels go, that Jev is being asked about this item: the user got here before the
  * answer did. It goes as soon as the labels are painted, even if there are none.
@@ -108,6 +116,54 @@ export function paintWaiting(anchor: HTMLElement, place: LabelPlace): void {
 	waiting.innerHTML = logo;
 	waiting.append(el('i', 'dot'), el('i', 'dot'), el('i', 'dot'));
 	root.append(waiting);
+}
+
+/** How much of itself a faded item keeps. */
+const FADED = '0.45';
+
+/**
+ * Does to the item what the user asked for what it was labelled: nothing more, fading it, or hiding
+ * it behind a line that says so and lets it be seen after all. Undoes what was done before: the
+ * same parts are treated again whenever the labels or what the user asks for change.
+ * `named` are the labels that are hidden with the item, for the line to name. `roomy` leaves room
+ * in the line for labels that hang over it.
+ */
+export function paintTreatment(
+	parts: { faded: HTMLElement[]; hidden: HTMLElement[] },
+	treatment: Treatment,
+	line: { named: Judgment[]; roomy: boolean; ground: Ground; show(): void }
+): void {
+	const parent = parts.hidden[0]?.parentElement;
+	for (const part of parts.faded) part.style.opacity = treatment === 'fade' ? FADED : '';
+	for (const part of parts.hidden) part.style.display = treatment === 'hide' ? 'none' : '';
+	if (!parent) return;
+	if (treatment !== 'hide') {
+		parent.querySelector(`:scope > [${MARK}="fold"]`)?.remove();
+		return;
+	}
+
+	const root = shadowIn(parent, 'fold', labelCss + foldCss);
+	const host = root.host as HTMLElement;
+	host.dataset.ground = line.ground;
+	host.toggleAttribute('data-roomy', line.roomy);
+	root.querySelector('.folded')?.remove();
+
+	const folded = el('div', 'folded');
+	// The drawing is Barrunto's own, a file in its code.
+	folded.innerHTML = logo;
+	folded.append('Hidden by Barrunto.');
+	// The same labels the item had, as they were: the string they hang from is all that goes.
+	for (const judgment of line.named) folded.append(labelNode(judgment, false));
+	const button = el('button', '', 'Show');
+	button.type = 'button';
+	button.addEventListener('click', line.show);
+	folded.append(button);
+	// Showing the item is not a click on the item.
+	folded.addEventListener('click', (event) => {
+		event.preventDefault();
+		event.stopPropagation();
+	});
+	root.append(folded);
 }
 
 function bar(value: number, ticks?: { thresholds: Judgment['thresholds']; current: Sensitivity }) {

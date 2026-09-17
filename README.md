@@ -30,7 +30,9 @@ Click Barrunto's icon and paste your TypeSafe key. Then choose where it acts: **
 
 From then on labels turn up on their own as you read; hover over one to see what it means.
 
-The popup is built around the page it is opened over. The switch at the top pauses Barrunto. Then comes how that page is analyzed: its pack's **sensitivity** (on *Low* only the clear cases get a label, and each step up labels more and gets more wrong, up to *Ultra*, which labels at the faintest hunch; moving it asks Jev nothing, the answers are already there), whatever controls the pack brings of its own (Hacker News can fade the comments it labels Snark or Tangent), how many items it reads ahead of you, and tuning mode. Last, what goes on with Jev: how much has been analyzed and the tokens that took, and the key.
+Some labels are for **noise**, the kinds of thing you may rather not see: Bait and Flame on X, Snark and Tangent on Hacker News. For each of them you choose, under *Noise* in the popup, whether what gets it is only labelled, faded, which is how they start, or hidden: all of it, author too, folded away behind a line that says so and why, with a *Show* to see it after all. What gets hidden is exactly what would have got the label, at the sensitivity you have chosen, and a model's hunch can be wrong: the line is there so that a mistake is never out of sight. When labels pull apart, as Bait and Signal on one post, the strictest wins. It looks best with items read ahead: what is judged before you reach it turns up already folded, instead of folding under your eyes.
+
+The popup is built around the page it is opened over. The switch at the top pauses Barrunto. Then comes how that page is analyzed: its pack's **sensitivity** (on *Low* only the clear cases get a label, and each step up labels more and gets more wrong, up to *Ultra*, which labels at the faintest hunch; moving it asks Jev nothing, the answers are already there), what to do with its noise, how many items it reads ahead of you, and tuning mode. Last, what goes on with Jev: how much has been analyzed and the tokens that took, and the key.
 
 **Tuning mode** puts under each post or comment one line with how each judgment came out; click it and it unfolds what Jev answered to every question and how each judgment added up. It is the way to see why something got the label it got, and the tool for adjusting the questions and the recipes.
 
@@ -72,7 +74,7 @@ A pack has two halves, because one runs inside the page and the other does not:
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `index.ts`         | Who it is: its name, the sites it acts on, the controls it puts in front of the user, its rules                                                               |
 | `rules/`           | The questions for Jev, the page signals, the judgments with their recipes and thresholds, the labels, and how an item is put in front of Jev                  |
-| `page/`            | Where things are on the site's page and how an item is read, where its labels go and what else is done to it. When the site changes, `selectors.ts` is the fix |
+| `page/`            | Where things are on the site's page and how an item is read, where its labels go, what of it is faded or hidden, and what else is done to it. When the site changes, `selectors.ts` is the fix |
 
 Who may import whom is kept by lint rules in `eslint.config.js`: the engine and the packs do not know Chrome, only `src/jev` knows the SDK, only the content script takes the page halves, and it cannot reach the key.
 

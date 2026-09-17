@@ -23,19 +23,52 @@ export const apiKey = storage.defineItem<string | null>('local:key', {
 	version: 1
 });
 
+const FADED: PackSettings['treatments'] = { snark: 'fade', tangent: 'fade' };
+
+/** A pack's settings before each noise judgment had its treatment, when fading was a control of Hacker News's own. */
+type PackSettingsV3 = Omit<PackSettings, 'treatments'>;
+interface SettingsV2 {
+	paused: boolean;
+	tuning: boolean;
+	packs: Record<string, PackSettingsV3>;
+}
+type SettingsV3 = SettingsV2 & { lookAhead: number };
+
 export const settings = storage.defineItem<Settings>('local:settings', {
 	fallback: defaultSettings,
-	version: 3,
+	version: 4,
 	migrations: {
 		// X.com stays on for whoever had it, with the sensitivity they had chosen.
-		2: ({ paused, sensitivity, tuning }: SettingsV1): Omit<Settings, 'lookAhead'> => ({
+		2: ({ paused, sensitivity, tuning }: SettingsV1): SettingsV2 => ({
 			paused,
 			tuning,
 			packs: { x: { enabled: true, sensitivity, options: {} } }
 		}),
-		3: (before: Omit<Settings, 'lookAhead'>): Settings => ({
+		3: (before: SettingsV2): SettingsV3 => ({
 			...before,
 			lookAhead: defaultSettings.lookAhead
+		}),
+		// Whoever had Hacker News fade its noise keeps it faded.
+		4: (before: SettingsV3): Settings => ({
+			...before,
+			packs: Object.fromEntries(
+				Object.entries(before.packs).map(
+					([
+						id,
+						{
+							options: { fade, ...options },
+							...chosen
+						}
+					]) => [
+						id,
+						{
+							...chosen,
+							options,
+							treatments: id === 'hn' && fade ? FADED : {}
+						}
+					]
+				)
+			)
 		})
 	}
 });

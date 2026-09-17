@@ -1,12 +1,19 @@
 import type { ContentScriptContext } from 'wxt/utils/content-script-context';
-import { labelsFor, packSettingsOf } from '@/engine';
+import { labelsFor, packSettingsOf, treatmentFor } from '@/engine';
 import type { Item, Pack, PageHalf } from '@/engine';
 import { send } from '@/messages';
 import type { Analysis } from '@/messages';
 import { connection, pageSettings } from '@/storage/session';
 import type { ConnectionStatus, Settings } from '@/storage/types';
 import { ground } from './ground';
-import { clearTuning, paintLabels, paintTuning, paintWaiting } from './paint';
+import {
+	clearLabels,
+	clearTuning,
+	paintLabels,
+	paintTreatment,
+	paintTuning,
+	paintWaiting
+} from './paint';
 import { tuningFor } from './tuning';
 
 /** How much of an item has to show, or of the screen it has to fill when it is taller than the screen. */
@@ -69,11 +76,15 @@ async function connectionNow(tries = STATUS_TRIES.times): Promise<ConnectionStat
 /** Watches a page of the pack's for its items, has the ones that dwell analyzed, and paints what comes back. */
 export async function watchPage(ctx: ContentScriptContext, pack: Pack, page: PageHalf) {
 	const { rules } = pack;
+	const placeOf = (article: HTMLElement) =>
+		typeof page.labelPlace === 'function' ? page.labelPlace(article) : page.labelPlace;
 	/** What is known of each item's element on the page. */
 	const tracked = new WeakMap<HTMLElement, Tracked>();
 	/** What came of each analyzed item, by id, for when the page draws it again. The oldest go first. */
 	const remembered = new Map<string, Outcome>();
 	const dwelling = new Map<HTMLElement, number>();
+	/** The items the user asked to see after all, hidden as they were, by id. */
+	const revealed = new Set<string>();
 	/** The items the browser is told about, and the ones of them that show on screen, however little. */
 	const watched = new Set<HTMLElement>();
 	const inSight = new Set<HTMLElement>();
@@ -95,22 +106,36 @@ export async function watchPage(ctx: ContentScriptContext, pack: Pack, page: Pag
 
 	function paint(article: HTMLElement, outcome: Outcome, arrive: boolean) {
 		try {
-			const { sensitivity, options } = chosen();
+			const { sensitivity, options, treatments } = chosen();
 			const analysis = 'item' in outcome ? outcome.analysis : null;
 			const labels = analysis?.analyzed
 				? labelsFor(rules.judgments, analysis.strengths, sensitivity)
 				: [];
-			paintLabels(page.labelAnchor(article), labels, page.labelPlace, arrive);
+			paintLabels(page.labelAnchor(article), labels, placeOf(article), arrive);
 			page.act?.(article, labels, options);
 
-			const anchor = page.tuningAnchor(article);
-			if (!currentSettings.tuning) return clearTuning(anchor);
+			const id = 'item' in outcome ? outcome.item.id : null;
+			const parts = page.parts(article);
+			const anchor = page.labelAnchor(article);
+			paintTreatment(parts, id && revealed.has(id) ? 'label' : treatmentFor(labels, treatments), {
+				// Labels that go with what is hidden are named in the line; the ones that stay hang over it.
+				named: parts.hidden.some((part) => part.contains(anchor)) ? labels : [],
+				roomy: placeOf(article) !== 'inline',
+				ground: ground(),
+				show() {
+					if (id) revealed.add(id);
+					paint(article, outcome, false);
+				}
+			});
+
+			const under = page.tuningAnchor(article);
+			if (!currentSettings.tuning) return clearTuning(under);
 			const reason = reasonOf(outcome);
 			const tuning =
 				'item' in outcome && outcome.analysis.analyzed
 					? tuningFor(rules, outcome.analysis.answers, outcome.item, sensitivity)
 					: { analyzed: false as const, reason: IN_WORDS[reason] ?? reason };
-			paintTuning(anchor, tuning, ground());
+			paintTuning(under, tuning, ground());
 		} catch (error) {
 			console.error('[barrunto] could not paint a post', error);
 		}
@@ -118,8 +143,10 @@ export async function watchPage(ctx: ContentScriptContext, pack: Pack, page: Pag
 
 	function unpaint(article: HTMLElement) {
 		try {
-			paintLabels(page.labelAnchor(article), [], page.labelPlace, false);
+			paintLabels(page.labelAnchor(article), [], placeOf(article), false);
 			page.act?.(article, [], chosen().options);
+			const none = { named: [], roomy: false, ground: ground(), show() {} };
+			paintTreatment(page.parts(article), 'label', none);
 			clearTuning(page.tuningAnchor(article));
 		} catch (error) {
 			console.error('[barrunto] could not clear a post', error);
@@ -160,7 +187,7 @@ export async function watchPage(ctx: ContentScriptContext, pack: Pack, page: Pag
 			known.waitingFor = item;
 			known.urgent = urgent;
 			try {
-				paintWaiting(page.labelAnchor(article), page.labelPlace);
+				paintWaiting(page.labelAnchor(article), placeOf(article));
 			} catch (error) {
 				console.error('[barrunto] could not paint an item', error);
 			}
@@ -229,6 +256,8 @@ export async function watchPage(ctx: ContentScriptContext, pack: Pack, page: Pag
 			let mine = tracked.get(article);
 			if (!mine || mine.id !== id) {
 				if (mine) unpaint(article);
+				// A new element may sit where another was: labels kept outside that one would outlive it.
+				else clearLabels(page.labelAnchor(article));
 				const outcome = id ? remembered.get(id) : undefined;
 				mine = { id, asked: outcome !== undefined, outcome };
 				tracked.set(article, mine);

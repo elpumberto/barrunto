@@ -15,10 +15,16 @@ import {
 
 beforeEach(() => fakeBrowser.reset());
 
-/** A made-up pack with one control of its own, off as it ships. */
+/** A made-up pack with one control of its own, off as it ships, and one judgment of noise among two. */
 const hn = {
 	id: 'hn',
-	controls: [{ id: 'fade', title: '', help: '', initial: false }]
+	controls: [{ id: 'loud', title: '', help: '', initial: false }],
+	rules: {
+		judgments: [
+			{ id: 'snark', noise: true },
+			{ id: 'insight', noise: false }
+		]
+	}
 } as Pack;
 
 const of = (itemId: string, wording = 'now', packId = 'x') => ({ packId, wording, itemId });
@@ -44,12 +50,17 @@ describe('what is chosen for a pack', () => {
 	it('starts as the pack ships it, off, and changes one thing at a time', async () => {
 		await changePack(hn, () => ({ enabled: true }));
 		expect((await settings.getValue()).packs).toEqual({
-			hn: { enabled: true, sensitivity: 'medium', options: { fade: false } }
+			hn: {
+				enabled: true,
+				sensitivity: 'medium',
+				treatments: { snark: 'fade' },
+				options: { loud: false }
+			}
 		});
-		await changePack(hn, ({ options }) => ({ options: { ...options, fade: true } }));
+		await changePack(hn, ({ options }) => ({ options: { ...options, loud: true } }));
 		expect((await settings.getValue()).packs.hn).toMatchObject({
 			enabled: true,
-			options: { fade: true }
+			options: { loud: true }
 		});
 	});
 
@@ -65,9 +76,24 @@ describe('what is chosen for a pack', () => {
 			paused: true,
 			tuning: false,
 			lookAhead: 3,
-			packs: { x: { enabled: true, sensitivity: 'high', options: {} } }
+			packs: { x: { enabled: true, sensitivity: 'high', treatments: {}, options: {} } }
 		});
 		expect(await totalCounters.getValue()).toEqual({ items: 7, tokensIn: 70, tokensOut: 7 });
+	});
+
+	it('keeps Hacker News fading its noise for whoever had asked it to', async () => {
+		const hnBefore = { enabled: true, sensitivity: 'low', options: { fade: true } };
+		await fakeBrowser.storage.local.set({
+			settings: { paused: false, tuning: false, lookAhead: 5, packs: { hn: hnBefore } },
+			settings$: { v: 3 }
+		});
+		await settings.migrate();
+		expect((await settings.getValue()).packs.hn).toEqual({
+			enabled: true,
+			sensitivity: 'low',
+			treatments: { snark: 'fade', tangent: 'fade' },
+			options: {}
+		});
 	});
 });
 

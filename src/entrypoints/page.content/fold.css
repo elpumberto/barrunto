@@ -1,0 +1,49 @@
+:host {
+	--text: #536471;
+	display: block;
+}
+
+:host([data-ground='dark']) {
+	--text: #8b98a5;
+}
+
+/* One quiet line where the item was: whose doing it is, and the way to see the item after all. */
+.folded {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 2px 0;
+	color: var(--text);
+	font:
+		12px/1.4 system-ui,
+		-apple-system,
+		'Segoe UI',
+		Roboto,
+		sans-serif;
+}
+
+/* Room for the labels that hang over it from the item's corner. */
+:host([data-roomy]) .folded {
+	padding: 12px 0;
+}
+
+/* A label that went with the item, named where it was: nothing to hang from here. */
+.folded .string {
+	display: none;
+}
+
+.folded > svg {
+	width: 12px;
+	height: 12px;
+	flex: none;
+}
+
+button {
+	padding: 0;
+	border: 0;
+	background: none;
+	color: inherit;
+	font: inherit;
+	text-decoration: underline;
+	cursor: pointer;
+}

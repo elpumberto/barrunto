@@ -96,5 +96,14 @@ export const labelAnchor = (row: HTMLElement): HTMLElement =>
 export const tuningAnchor = (row: HTMLElement): HTMLElement =>
 	row.querySelector<HTMLElement>(selectors.content) ?? row;
 
-/** The words of the comment, which is what fades. */
-export const wordsOf = (row: HTMLElement) => row.querySelector<HTMLElement>(selectors.text);
+/**
+ * Faded, a comment loses its words and keeps its header, labels and all. Hidden, it loses everything
+ * in its cell, header too. Its place in the thread stays: the push to the right and the vote arrow.
+ */
+export function commentParts(row: HTMLElement): { faded: HTMLElement[]; hidden: HTMLElement[] } {
+	const words = row.querySelector<HTMLElement>(selectors.content);
+	const cell = row.querySelector<HTMLElement>(selectors.body);
+	const mine = (child: Element): child is HTMLElement =>
+		child instanceof HTMLElement && !child.hasAttribute('data-barrunto');
+	return { faded: words ? [words] : [], hidden: cell ? [...cell.children].filter(mine) : [] };
+}
