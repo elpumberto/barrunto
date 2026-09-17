@@ -13,7 +13,9 @@ export default defineConfig({
 		// The first Chrome where the background can open session storage to a content script.
 		minimum_chrome_version: '102',
 		// `scripting` is what lets the background have the content script run only where a pack is on.
-		permissions: ['storage', 'scripting'],
+		// `activeTab` tells the popup the address of the page it is opened over, and of no other, so
+		// that it can offer that page's pack.
+		permissions: ['storage', 'scripting', 'activeTab'],
 		// Barrunto may act on no site until the user turns its pack on, and Chrome asks them then. The
 		// stand-in build holds them all from the start: the smoke test has nobody to answer Chrome.
 		host_permissions: process.env.WXT_STAND_IN ? [TYPESAFE, ...sites] : [TYPESAFE],

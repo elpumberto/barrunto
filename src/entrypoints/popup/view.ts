@@ -3,19 +3,26 @@ import type { Pack } from '@/engine';
 import type { KeyFailure } from '@/messages';
 // The types alone, and not `@/storage`: drawing the popup needs no Chrome, and so its tests need none either.
 import type { ConnectionStatus, Counters, Settings } from '@/storage/types';
-import { onPackControl, packControls, toggle } from '@/ui/pack-controls';
-import type { PackActions } from '@/ui/pack-controls';
+import { onPackControl, packControls, toggle } from './pack-controls';
+import type { PackActions } from './pack-controls';
 import eyebrow from '@/assets/icon.svg?raw';
 import wordmark from '@/assets/wordmark.svg?raw';
-import { fold, redraw } from '@/ui/redraw';
+import { fold, redraw } from './redraw';
+import { packsView } from './packs-view';
 import { texts } from './texts';
 
 /** Everything the popup shows. The stored part comes from storage; the key form's part is the popup's own. */
 export interface PopupState {
 	connection: ConnectionStatus;
 	settings: Settings;
-	/** The pack that acts on the page the popup was opened over, if one does and Barrunto can tell. */
+	/** The packs there are. */
+	packs: Pack[];
+	/** The pack of the page the popup was opened over, on or off, if there is one. */
 	pack: Pack | null;
+	/** Which view is up: the home view, about this page, or the catalogue of packs. */
+	view: 'home' | 'packs';
+	/** In the catalogue, the pack whose description is unfolded. */
+	about: string | null;
 	session: Counters;
 	total: Counters;
 	/** The last four characters of the stored key. */
@@ -46,7 +53,10 @@ export interface PopupActions extends PackActions {
 	setPaused(paused: boolean): void;
 	setTuning(tuning: boolean): void;
 	resetCounters(): void;
-	openPacks(): void;
+	go(view: PopupState['view']): void;
+	/** Unfolds what a pack is about, or folds it back if it was the one unfolded. */
+	showAbout(packId: string): void;
+	setEnabled(packId: string, on: boolean): void;
 }
 
 const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -96,15 +106,22 @@ function keyForm({ form, connection }: PopupState, canCancel: boolean): string {
 	</form>`;
 }
 
-/** How things are analyzed: the controls of the pack that acts on this page, while it is on, and the tuning mode. */
+/**
+ * How things are analyzed on this page: the controls of its pack while it is on, the offer to turn
+ * it on while it is off, and the tuning mode.
+ */
 function analysis({ settings, pack }: PopupState): string {
 	const chosen = pack && packSettingsOf(pack, settings.packs[pack.id]);
 	const anyOn = Object.values(settings.packs).some((p) => p.enabled);
-	const ofThisPage =
-		pack && chosen?.enabled
-			? packControls(pack, chosen)
-			: `<p class="${anyOn ? 'help' : 'warning'}">${anyOn ? texts.packs.notHere : texts.packs.noneOn}</p>`;
-	return `<section class="row"><div class="eyebrow">${pack && chosen?.enabled ? pack.name : texts.analysis}</div>
+	let ofThisPage: string;
+	if (pack && chosen?.enabled) ofThisPage = packControls(pack, chosen);
+	else if (pack) {
+		ofThisPage = `<div class="inline"><div><div class="title">${texts.packs.off.title}</div><p class="help">${texts.packs.off.help}</p></div>
+			${toggle('enable', false, texts.packs.on(pack.name), `data-pack="${pack.id}"`)}</div>`;
+	} else {
+		ofThisPage = `<p class="${anyOn ? 'help' : 'warning'}">${anyOn ? texts.packs.notHere : texts.packs.noneOn}</p>`;
+	}
+	return `<section class="row"><div class="eyebrow">${pack ? pack.name : texts.analysis}</div>
 		${ofThisPage}
 		<div class="inline"><div><div class="title">${texts.tuning.title}</div><p class="help">${texts.tuning.help}</p></div>
 			${toggle('tuning', settings.tuning, texts.tuning.title)}</div></section>`;
@@ -147,7 +164,12 @@ export function renderPopup(root: HTMLElement, state: PopupState, actions: Popup
 	const { connection, settings, form } = state;
 	const needsKey = connection.state === 'noKey' || connection.state === 'keyRejected';
 	const asksKey = needsKey || form.open;
-	redraw(root, head(state, !asksKey) + (asksKey ? keyForm(state, !needsKey) : working(state)));
+	const body = asksKey
+		? keyForm(state, !needsKey)
+		: state.view === 'packs'
+			? packsView(state)
+			: working(state);
+	redraw(root, head(state, !asksKey) + body);
 
 	const field = root.querySelector<HTMLInputElement>('#key');
 	if (field) field.value = form.typed;
@@ -175,7 +197,16 @@ export function renderPopup(root: HTMLElement, state: PopupState, actions: Popup
 			case 'remove':
 				return actions.removeKey();
 			case 'packs':
-				return actions.openPacks();
+				return actions.go('packs');
+			case 'home':
+				return actions.go('home');
+			case 'about':
+				return actions.showAbout(button.dataset.pack!);
+			case 'enable':
+				return actions.setEnabled(
+					button.dataset.pack!,
+					button.getAttribute('aria-checked') !== 'true'
+				);
 		}
 	};
 }

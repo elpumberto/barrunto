@@ -1,5 +1,5 @@
 import type { KeyFailure } from '@/messages';
-import type { Trouble } from '@/storage/types';
+import type { Sensitivity, Trouble } from '@/storage/types';
 
 const meanwhile =
 	'Nothing gets a label meanwhile; Barrunto tries again with the next thing it reads.';
@@ -37,8 +37,26 @@ export const texts = {
 	reading: 'Reading',
 	packs: {
 		open: 'Rule packs',
-		noneOn: 'No rule pack is on, so Barrunto reads nothing. Choose where it should act.',
-		notHere: 'No rule pack is on for this page.'
+		back: 'Back',
+		on: (name: string) => `${name} on`,
+		noneOn: 'No rule pack is on, so Barrunto reads nothing. Turn one on in Rule packs.',
+		notHere: 'There is no rule pack for this page.',
+		off: { title: 'This pack is off', help: 'Turn it on and Barrunto reads this site.' },
+		leave:
+			'Barrunto reads a site only while its pack is on. Chrome asks your leave when you turn one on.'
+	},
+	sensitivity: {
+		title: 'Sensitivity',
+		stops: { low: 'Low', medium: 'Medium', high: 'High', ultra: 'Ultra' } satisfies Record<
+			Sensitivity,
+			string
+		>,
+		help: {
+			low: 'Only the clear cases. Few labels, few misses.',
+			medium: 'A balance.',
+			high: 'Labels more, and gets more wrong.',
+			ultra: 'Labels at the faintest hunch. Expect plenty of misses.'
+		} satisfies Record<Sensitivity, string>
 	},
 	counters: {
 		title: 'Usage',

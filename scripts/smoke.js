@@ -1,7 +1,8 @@
 // Loads the built extension into a headless Chrome and walks the whole path once, with no network:
-// a bad key, a good key, a pack turned on in the packs page, a made-up x.com page, labels on the
-// posts that dwell, a change of sensitivity reaching the page, counters in the popup; then the same
-// for a made-up Hacker News thread, with a pack that stays off acting nowhere.
+// a bad key, a good key, a pack turned on in the popup's catalogue, a made-up x.com page, labels on
+// the posts that dwell, a change of sensitivity in the popup opened over the page reaching it,
+// counters; then a made-up Hacker News thread, left alone while its pack is off and labelled
+// without a reload once it is turned on.
 // It needs the stand-in build, which also holds leave for every pack's site: `npm run smoke`.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -77,16 +78,30 @@ try {
 	assert.match(await popup.$eval('.key .tail', (el) => el.textContent), /1234$/);
 	assert.match(await popup.$eval('.warning', (el) => el.textContent), /No rule pack is on/);
 
-	// Nothing acts anywhere until its pack is turned on, in the packs page.
-	const packs = await browser.newPage();
-	packs.on('pageerror', (error) => errors.push(`packs: ${error.message}`));
-	await packs.goto(`chrome-extension://${extension}/options.html`);
+	// Nothing acts anywhere until its pack is turned on, in the popup's catalogue of packs.
 	const turnOn = async (pack) => {
-		await packs.bringToFront();
-		await packs.click(`[data-action="enable"][data-pack="${pack}"]`);
-		await packs.waitForSelector(`.card[data-pack="${pack}"] .stops`);
+		await popup.bringToFront();
+		await popup.click('[data-action="packs"]');
+		await popup.click(`[data-action="enable"][data-pack="${pack}"]`);
+		await popup.waitForSelector(`[data-action="enable"][data-pack="${pack}"][aria-checked="true"]`);
+		await popup.click('[data-action="home"]');
 	};
 	await turnOn('x');
+
+	// The popup as the user opens it, over the page in front: that page's pack is what it shows.
+	const overThePage = async (pack, act) => {
+		const background = await worker.worker();
+		await background.evaluate(() => chrome.action.openPopup());
+		const opened = await browser.waitForTarget(
+			(target) => target.url().endsWith('/popup.html') && target !== popup.target()
+		);
+		const real = await opened.asPage();
+		real.on('pageerror', (error) => errors.push(`popup over the page: ${error.message}`));
+		await real.waitForSelector('.eyebrow');
+		assert.match(await real.$eval('.eyebrow', (el) => el.textContent), pack);
+		await act(real);
+		await real.close().catch(() => {});
+	};
 
 	const page = await browser.newPage();
 	page.on('pageerror', (error) => errors.push(`page: ${error.message}`));
@@ -111,8 +126,8 @@ try {
 
 	// A change of sensitivity in the popup reaches the page and repaints it without asking again.
 	const onMedium = (await labelsOnPage(page)).flat().length;
-	await packs.bringToFront();
-	await packs.click('[data-action="sensitivity"][data-pack="x"][data-value="ultra"]');
+	await page.bringToFront();
+	await overThePage(/^X$/, (real) => real.click('[data-action="sensitivity"][data-value="ultra"]'));
 	await page.bringToFront();
 	await page.waitForFunction(
 		(before) =>
@@ -138,9 +153,11 @@ try {
 	await new Promise((resolve) => setTimeout(resolve, 2500));
 	assert.equal(await page.$('[data-barrunto]'), null, 'a pack that is off leaves its site alone');
 	await turnOn('hn');
-	await packs.click('[data-action="sensitivity"][data-pack="hn"][data-value="ultra"]');
 	await page.bringToFront();
-	await page.reload();
+	await overThePage(/Hacker News/, (real) =>
+		real.click('[data-action="sensitivity"][data-value="ultra"]')
+	);
+	await page.bringToFront();
 	await page.waitForFunction(`(${looked.toString().replace('article >', '.comhead >')})() === 3`, {
 		timeout: 15000
 	});
@@ -153,7 +170,7 @@ try {
 	await popup.bringToFront();
 	assert.equal(await analyzed(), ON_SCREEN + 3, 'comments are counted with the posts');
 
-	assert.deepEqual(errors, [], 'nothing threw in the popup, the packs page or the page');
+	assert.deepEqual(errors, [], 'nothing threw in the popup or the page');
 	console.log('ok');
 } finally {
 	await browser.close();

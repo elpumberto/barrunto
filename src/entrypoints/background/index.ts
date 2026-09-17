@@ -11,10 +11,6 @@ export default defineBackground(() => {
 	// Chrome starts the background only for something it listens to. Without this, reopening the
 	// browser would wake nobody, and the session would begin without its connection status.
 	browser.runtime.onStartup.addListener(() => {});
-	// Freshly installed, Barrunto acts nowhere: the first thing to do is to choose where.
-	browser.runtime.onInstalled.addListener(({ reason }) => {
-		if (reason === 'install') void browser.runtime.openOptionsPage();
-	});
 
 	listen({
 		analyze: ({ packId, item }, from) => analyze(packId, item, from),

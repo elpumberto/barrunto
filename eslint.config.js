@@ -24,7 +24,6 @@ const pages = {
 const jev = piece('jev', 'jev');
 const storage = piece('storage', 'storage');
 const messages = piece('messages', 'messages');
-const ui = piece('ui', 'ui');
 /** Local storage is closed to the pages Barrunto acts on: its content script takes the session half and the types alone. */
 const closedStorage = {
 	group: ['@/storage/*', '!@/storage/session', '!@/storage/types'],
@@ -34,31 +33,23 @@ const wholeStorage = {
 	name: '@/storage',
 	message: 'This piece may not use the whole of @/storage.'
 };
-/** Drawing needs no Chrome: what draws takes the types of what is stored, and nothing else of it. */
-const storageButTypes = {
-	group: ['@/storage/*', '!@/storage/types'],
-	message: 'This piece may use only the types of @/storage.'
-};
 const entrypoints = piece('entrypoints', 'entrypoints');
 const content = piece('entrypoints/page.content', 'page.content');
 const background = piece('entrypoints/background', 'background');
 const popup = piece('entrypoints/popup', 'popup');
-const options = piece('entrypoints/options', 'options');
 
 const borders = {
-	'src/engine/**': [chrome, packs, jev, storage, messages, ui, entrypoints],
-	'src/packs/*/rules/**': [chrome, pages, jev, storage, messages, ui, entrypoints],
-	'src/packs/*/page/**': [chrome, jev, storage, messages, ui, entrypoints],
-	'src/packs/*/*.ts': [chrome, pages, jev, storage, messages, ui, entrypoints],
-	'src/packs/*.ts': [chrome, jev, storage, messages, ui, entrypoints],
-	'src/jev/**': [packs, storage, messages, ui, entrypoints],
-	'src/storage/**': [packs, jev, messages, ui, entrypoints],
-	'src/messages.ts': [packs, jev, ui, entrypoints],
-	'src/ui/**': [chrome, pages, jev, storageButTypes, messages, entrypoints],
-	'src/entrypoints/page.content/**': [jev, closedStorage, ui, background, popup, options],
-	'src/entrypoints/background/**': [pages, ui, content, popup, options],
-	'src/entrypoints/popup/**': [jev, pages, content, background, options],
-	'src/entrypoints/options/**': [jev, pages, messages, content, background, popup]
+	'src/engine/**': [chrome, packs, jev, storage, messages, entrypoints],
+	'src/packs/*/rules/**': [chrome, pages, jev, storage, messages, entrypoints],
+	'src/packs/*/page/**': [chrome, jev, storage, messages, entrypoints],
+	'src/packs/*/*.ts': [chrome, pages, jev, storage, messages, entrypoints],
+	'src/packs/*.ts': [chrome, jev, storage, messages, entrypoints],
+	'src/jev/**': [packs, storage, messages, entrypoints],
+	'src/storage/**': [packs, jev, messages, entrypoints],
+	'src/messages.ts': [packs, jev, entrypoints],
+	'src/entrypoints/page.content/**': [jev, closedStorage, background, popup],
+	'src/entrypoints/background/**': [pages, content, popup],
+	'src/entrypoints/popup/**': [jev, pages, content, background]
 };
 const knowNoChrome = ['src/engine/**', 'src/packs/**'];
 
@@ -76,9 +67,7 @@ export default ts.config(
 				'error',
 				{
 					patterns,
-					paths: patterns.some((p) => p === closedStorage || p === storageButTypes)
-						? [wholeStorage]
-						: []
+					paths: patterns.includes(closedStorage) ? [wholeStorage] : []
 				}
 			]
 		}

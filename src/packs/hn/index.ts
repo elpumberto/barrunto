@@ -10,7 +10,7 @@ export const pack: Pack<Comment> = {
 	id: 'hn',
 	name: 'Hacker News',
 	description:
-		'In a thread, tells apart the comments that know what they talk about, the sneers and the ones that wander off the subject.',
+		'Tells apart the comments that know the subject, the sneers and the ones that wander off it.',
 	sites: ['https://news.ycombinator.com/*'],
 	items: 'comments',
 	controls,

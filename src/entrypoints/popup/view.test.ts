@@ -11,7 +11,10 @@ const connected: PopupState = {
 		tuning: false,
 		packs: { x: { enabled: true, sensitivity: 'medium', options: {} } }
 	},
+	packs: [x, hn],
 	pack: x,
+	view: 'home',
+	about: null,
 	session: { items: 7, tokensIn: 1900, tokensOut: 98 },
 	total: { items: 1284, tokensIn: 352_000, tokensOut: 18_000 },
 	keyTail: '4f2a',
@@ -29,7 +32,9 @@ const actions = {
 	setOption: vi.fn(),
 	setTuning: vi.fn(),
 	resetCounters: vi.fn(),
-	openPacks: vi.fn()
+	go: vi.fn(),
+	showAbout: vi.fn(),
+	setEnabled: vi.fn()
 } satisfies PopupActions;
 
 let root: HTMLElement;
@@ -107,12 +112,15 @@ describe('the popup', () => {
 		expect(actions.setOption).toHaveBeenCalledWith('hn', 'fade', true);
 	});
 
-	it('shows no controls over a page with no pack on, and says so louder when none is on at all', () => {
-		draw({ pack: null });
-		expect(root.querySelector('.stops')).toBeNull();
-		expect(root.textContent).toContain('No rule pack is on for this page');
+	it('offers the pack of this page while it is off, and says so when the page has none', () => {
 		draw({ pack: hn });
 		expect(root.querySelector('.stops')).toBeNull();
+		expect(root.querySelector('.eyebrow')!.textContent).toBe('Hacker News');
+		click('[data-action="enable"][data-pack="hn"]');
+		expect(actions.setEnabled).toHaveBeenCalledWith('hn', true);
+
+		draw({ pack: null });
+		expect(root.textContent).toContain('There is no rule pack for this page');
 		draw({ pack: null, settings: { ...connected.settings, packs: {} } });
 		expect(root.querySelector('.warning')!.textContent).toContain('No rule pack is on');
 	});
@@ -138,7 +146,7 @@ describe('the popup', () => {
 		click('[data-action="change"]');
 		click('[data-action="remove"]');
 		click('[data-action="packs"]');
-		expect(actions.openPacks).toHaveBeenCalled();
+		expect(actions.go).toHaveBeenCalledWith('packs');
 		expect(actions.resetCounters).toHaveBeenCalled();
 		expect(actions.changeKey).toHaveBeenCalled();
 		expect(actions.removeKey).toHaveBeenCalled();
@@ -189,5 +197,47 @@ describe('the popup', () => {
 		draw({ keyTail: '<b>x' });
 		expect(root.querySelector('.key b')).toBeNull();
 		expect(root.querySelector('.key .tail')!.textContent).toContain('<b>x');
+	});
+});
+
+describe('the catalogue of packs', () => {
+	const entry = (id: string) => root.querySelector<HTMLElement>(`.pack[data-pack="${id}"]`)!;
+
+	it('lists every pack with where it acts and whether it is on, and no controls', () => {
+		draw({ view: 'packs' });
+		expect(root.querySelectorAll('.pack')).toHaveLength(2);
+		expect(entry('hn').querySelector('.site')!.textContent).toBe('news.ycombinator.com');
+		expect(entry('x').querySelector('.switch')!.getAttribute('aria-checked')).toBe('true');
+		expect(entry('hn').querySelector('.switch')!.getAttribute('aria-checked')).toBe('false');
+		expect(root.querySelector('.stops')).toBeNull();
+		expect(root.querySelector('.legend')).toBeNull();
+	});
+
+	it('unfolds what one pack is about: what it does and what its labels mean', () => {
+		draw({ view: 'packs', about: 'hn' });
+		expect(entry('x').querySelector('.legend')).toBeNull();
+		expect([...entry('hn').querySelectorAll('.chip')].map((chip) => chip.textContent)).toEqual([
+			'Insight',
+			'Snark',
+			'Tangent'
+		]);
+	});
+
+	it('sends each thing to its action, and knows the way back', () => {
+		draw({ view: 'packs' });
+		entry('hn').querySelector<HTMLElement>('[data-action="about"]')!.click();
+		expect(actions.showAbout).toHaveBeenCalledWith('hn');
+		entry('hn').querySelector<HTMLElement>('[data-action="enable"]')!.click();
+		expect(actions.setEnabled).toHaveBeenCalledWith('hn', true);
+		entry('x').querySelector<HTMLElement>('[data-action="enable"]')!.click();
+		expect(actions.setEnabled).toHaveBeenCalledWith('x', false);
+		click('[data-action="home"]');
+		expect(actions.go).toHaveBeenCalledWith('home');
+	});
+
+	it('gives way to the key form when the key is rejected', () => {
+		draw({ view: 'packs', connection: { state: 'keyRejected' } });
+		expect(root.querySelector('#key')).not.toBeNull();
+		expect(root.querySelector('.pack')).toBeNull();
 	});
 });

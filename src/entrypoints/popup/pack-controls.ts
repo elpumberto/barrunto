@@ -2,9 +2,9 @@ import { SENSITIVITIES } from '@/engine';
 import type { Pack, PackSettings, Sensitivity } from '@/engine';
 import { texts } from './texts';
 
-// What the user can adjust of a pack, drawn the same in the popup and in the packs page: the
-// sensitivity, which every pack has, and then the pack's own controls. Everything drawn as HTML
-// here is Barrunto's own or a pack's, constants in the code: nothing comes from a page.
+// What the user can adjust of a pack: the sensitivity, which every pack has, and then the pack's
+// own controls. Everything drawn as HTML here is Barrunto's own or a pack's, constants in the
+// code: nothing comes from a page.
 
 export const toggle = (action: string, on: boolean, name: string, data = '') =>
 	`<button class="switch" type="button" role="switch" aria-checked="${on}" aria-label="${name}" data-action="${action}" ${data}></button>`;

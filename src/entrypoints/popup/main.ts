@@ -11,13 +11,13 @@ import {
 	settings,
 	totalCounters
 } from '@/storage';
-import '@/ui/style.css';
+import './style.css';
 import type { PopupActions, PopupState } from './view';
 import { closedForm, renderPopup, tailOf } from './view';
 
 const root = document.getElementById('popup')!;
 
-/** The pack of the page the popup was opened over. Chrome tells the address only of pages Barrunto may act on. */
+/** The pack of the page the popup was opened over. Opening the popup is what lets Barrunto see that page's address. */
 async function packOfThisTab(): Promise<Pack | null> {
 	const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
 	const address = tab?.url;
@@ -31,7 +31,10 @@ async function packOfThisTab(): Promise<Pack | null> {
 let state: PopupState = {
 	connection: await connection.getValue(),
 	settings: await settings.getValue(),
+	packs,
 	pack: await packOfThisTab(),
+	view: 'home',
+	about: null,
 	session: await sessionCounters.getValue(),
 	total: await totalCounters.getValue(),
 	keyTail: tailOf(await apiKey.getValue()),
@@ -73,7 +76,25 @@ const actions: PopupActions = {
 	},
 	setTuning: (tuning) => void settings.setValue({ ...state.settings, tuning }),
 	resetCounters: () => void send({ type: 'resetCounters' }),
-	openPacks: () => void browser.runtime.openOptionsPage()
+	go: (view) => set({ view }),
+	showAbout: (packId) => set({ about: state.about === packId ? null : packId }),
+	async setEnabled(packId, on) {
+		const pack = packById(packId);
+		if (!pack) return;
+		if (!on) {
+			await changePack(pack, () => ({ enabled: false }));
+			// A pack that is off keeps no leave over its site. Leave that cannot be given back (the
+			// stand-in build holds it for good) does no harm.
+			await browser.permissions.remove({ origins: pack.sites }).catch(() => {});
+			return;
+		}
+		// Chrome takes a request for leave only straight from the user's click, and its question may
+		// close the popup before it is answered: the background turns the pack on when leave arrives.
+		// Leave already held raises no question, and then turning the pack on is for here.
+		if (await browser.permissions.request({ origins: pack.sites })) {
+			await changePack(pack, () => ({ enabled: true }));
+		}
+	}
 };
 
 // Whatever is stored and shown here reaches the popup the same way it reaches everyone else.

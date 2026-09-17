@@ -1,4 +1,4 @@
-// Both of Barrunto's pages draw themselves whole on every change. What the user had in hand must
+// The popup draws itself whole on every change. What the user had in hand must
 // survive that: where the focus was, and which folds they had opened.
 
 /** What has the focus inside `root`, in a form that survives a redraw. */

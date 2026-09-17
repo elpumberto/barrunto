@@ -6,7 +6,7 @@ What it reads and what it says depends on the site. Everything Barrunto knows ab
 
 | Pack        | Reads                  | Labels                                                                                                                                      |
 | ----------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| X.com       | Posts, as you scroll   | **Bait**, made to farm reactions; **Flame**, picking a fight; **Signal**, worth your time                                                     |
+| X           | Posts, as you scroll   | **Bait**, made to farm reactions; **Flame**, picking a fight; **Signal**, worth your time                                                     |
 | Hacker News | Comments in a thread   | **Insight**, knows the subject or was there; **Snark**, a put-down with no reasons; **Tangent**, about the title, the site or something else |
 
 [Jev](https://docs.typesafe.ai) is TypeSafe's model that answers closed questions with probabilities instead of writing text. Barrunto asks it nine yes/no questions about each post or comment, in a single call, and code combines the answers into the pack's judgments. There is no server: you bring your own TypeSafe key and the extension talks straight to the API.
@@ -26,13 +26,11 @@ and load the `.output/chrome-mv3` folder the same way. After building again, pre
 
 ## Using it
 
-Click Barrunto's icon and paste your TypeSafe key. Then choose where it acts: the **Rule packs** page, which opens by itself on installing and from the popup afterwards, lists the packs, all off at first. Turning one on makes Chrome ask your leave for Barrunto to read that site, and no other; turning it off gives the leave back. Pages already open need a reload.
+Click Barrunto's icon and paste your TypeSafe key. Then choose where it acts: **Rule packs**, at the foot of the popup, lists the packs, all off at first, and what each one does. Turning one on makes Chrome ask your leave for Barrunto to read that site, and no other; turning it off gives the leave back. Or go to the site and open the popup there: it offers that site's pack.
 
 From then on labels turn up on their own as you read; hover over one to see what it means.
 
-Each pack has its **sensitivity**: on *Low* only the clear cases get a label, and each step up labels more and gets more wrong, up to *Ultra*, which labels at the faintest hunch. Moving it asks Jev nothing: the answers are already there. A pack can bring controls of its own: Hacker News can fade the comments it labels Snark or Tangent. A pack's controls are in the Rule packs page and, over a page of that pack, in the popup.
-
-The popup is built around the page it is opened over: the switch at the top pauses Barrunto, then come how things are analyzed (the controls of that page's pack, and tuning mode) and what goes on with Jev: the key, and how much has been analyzed and the tokens that took, folded to a line.
+The popup is built around the page it is opened over. The switch at the top pauses Barrunto. Then comes how that page is analyzed: its pack's **sensitivity** (on *Low* only the clear cases get a label, and each step up labels more and gets more wrong, up to *Ultra*, which labels at the faintest hunch; moving it asks Jev nothing, the answers are already there), whatever controls the pack brings of its own (Hacker News can fade the comments it labels Snark or Tangent) and tuning mode. Last, what goes on with Jev: how much has been analyzed and the tokens that took, and the key.
 
 **Tuning mode** shows under each post or comment what Jev answered to every question and how each judgment added up. It is the way to see why something got the label it got, and the tool for adjusting the questions and the recipes.
 
@@ -66,8 +64,7 @@ Everything specific to a site lives together as a **rule pack**, apart from an *
 | `src/jev`           | The only piece that knows TypeSafe's SDK, and a stand-in that makes answers up                                                                |
 | `src/storage`       | What is stored, where, with its types                                                                                                         |
 | `src/messages.ts`   | The four things the parts ask the background, with their types                                                                                |
-| `src/ui`            | What the popup and the Rule packs page draw alike: a pack's controls, the styles                                                              |
-| `src/entrypoints`   | The content script (watches a page and paints), the background (asks Jev, keeps the answers, has the content script run where a pack is on), the popup and the Rule packs page |
+| `src/entrypoints`   | The content script (watches a page and paints), the background (asks Jev, keeps the answers, has the content script run where a pack is on) and the popup |
 
 A pack has two halves, because one runs inside the page and the other does not:
 
@@ -81,7 +78,7 @@ Who may import whom is kept by lint rules in `eslint.config.js`: the engine and 
 
 To change what Barrunto looks for on a site, the place is the pack's `rules`: a question in `traits.ts`, a weight in `judgments.ts`. The tests in `judgments.test.ts` are the kinds of item the recipes are meant for.
 
-To write a pack for another site, copy the smaller one, `src/packs/hn`, add it to the two lists in `src/packs`, and the rest follows from there: the manifest asks for its sites as optional, the Rule packs page shows it, the content script runs on it once it is on. `src/packs/packs.test.ts` checks that it holds together.
+To write a pack for another site, copy the smaller one, `src/packs/hn`, add it to the two lists in `src/packs`, and the rest follows from there: the manifest asks for its sites as optional, the popup lists it, the content script runs on it once it is on. `src/packs/packs.test.ts` checks that it holds together.
 
 ## Working on it
 
