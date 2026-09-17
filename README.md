@@ -22,7 +22,7 @@ Or build it yourself, with Node 22 or later:
     npm install
     npm run build
 
-and load the `.output/chrome-mv3` folder the same way. After building again, press the reload arrow on Barrunto's card; the tabs it reads pick the new build up by themselves.
+and load the `.output/chrome-mv3` folder the same way. What each version brings, and what to do after updating to it, is in the [changelog](CHANGELOG.md). After building again, press the reload arrow on Barrunto's card; the tabs it reads pick the new build up by themselves.
 
 ## Using it
 
@@ -95,6 +95,8 @@ To write a pack for another site, copy the simpler one, `src/packs/hn`, add it t
 | `npm run check`, `lint`  | Types, ESLint with the borders between pieces, Prettier                                   |
 | `npm run verify`         | All of the above, then the build                                                          |
 | `npm run zip`            | The archive that goes in a release                                                        |
+
+A release is a tag: set the version in `package.json`, give it a section at the top of `CHANGELOG.md`, and push `v` and the version as a tag. The release is built from it, with that section as its notes.
 
 Built with [WXT](https://wxt.dev) and TypeScript, with no UI framework. The wordmark is set in [Bricolage Grotesque](https://github.com/ateliertriay/bricolage), under the SIL Open Font License.
 

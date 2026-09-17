@@ -1,7 +1,7 @@
 {
 	"name": "barrunto",
 	"description": "Reads what you browse, asks Jev about each thing and hangs a label on it when it has something clear to say. One rule pack per site.",
-	"version": "1.0.0",
+	"version": "2.0.0",
 	"private": true,
 	"type": "module",
 	"engines": {

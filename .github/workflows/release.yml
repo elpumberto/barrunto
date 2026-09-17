@@ -1,5 +1,6 @@
 # Tagging a version (v1.2.3) builds the extension and publishes it as a release,
-# so that installing it needs neither Node nor building anything.
+# so that installing it needs neither Node nor building anything. The release says
+# what CHANGELOG.md says of that version.
 name: Release
 
 on:
@@ -27,7 +28,11 @@ jobs:
       - run: npm run zip
       - name: Name the archive without its version, so the README's link never goes stale
         run: cp .output/barrunto-*-chrome.zip barrunto-chrome.zip
+      - name: Take the notes from the changelog's section for this version
+        run: |
+          awk -v section="## ${GITHUB_REF_NAME#v}" '$0 == section {on=1; next} /^## / {on=0} on' CHANGELOG.md > notes.md
+          grep -q '[^[:space:]]' notes.md
       - name: Publish the release
-        run: gh release create "$GITHUB_REF_NAME" barrunto-chrome.zip --title "$GITHUB_REF_NAME" --generate-notes
+        run: gh release create "$GITHUB_REF_NAME" barrunto-chrome.zip --title "$GITHUB_REF_NAME" --notes-file notes.md
         env:
           GH_TOKEN: ${{ github.token }}
