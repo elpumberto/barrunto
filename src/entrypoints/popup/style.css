@@ -116,7 +116,7 @@ button {
 }
 
 .band {
-	padding: 10px 16px;
+	padding: 6px 16px;
 	border-bottom: 1px solid var(--hairline);
 	color: var(--warn);
 	font-size: 13px;
@@ -133,13 +133,6 @@ button {
 
 .row:last-child {
 	border-bottom: 0;
-}
-
-.row.inline {
-	flex-direction: row;
-	align-items: center;
-	justify-content: space-between;
-	gap: 12px;
 }
 
 .title {
@@ -256,6 +249,11 @@ button {
 	outline-offset: -2px;
 }
 
+/* On the chosen stop the ring would be the colour of what it is drawn on. */
+.stops button[aria-pressed='true']:focus-visible {
+	outline-color: var(--on-indigo);
+}
+
 .counters {
 	width: 100%;
 	border-collapse: collapse;
@@ -268,6 +266,14 @@ button {
 	color: var(--ink-2);
 	font-weight: 400;
 	text-align: right;
+}
+
+.counters th:first-child {
+	text-align: left;
+}
+
+.counters th .link {
+	font-size: 13px;
 }
 
 .counters td {
@@ -308,10 +314,6 @@ button {
 	text-decoration: underline;
 }
 
-.link.end {
-	align-self: flex-end;
-}
-
 /* A row inside a row: a title and its help on one side, its switch on the other. */
 .inline {
 	display: flex;
@@ -320,7 +322,8 @@ button {
 	gap: 12px;
 }
 
-.row > .inline {
+/* A control under another in the same row. The rows of the catalogue are not that. */
+.row:not(.pack) > .inline {
 	padding-top: 6px;
 }
 
@@ -499,10 +502,6 @@ button {
 	gap: 8px;
 }
 
-p.row {
-	border-bottom: 0;
-}
-
 @media (prefers-reduced-motion: reduce) {
 	.more::before {
 		transition: none;
@@ -517,7 +516,8 @@ p.row {
 	text-align: right;
 }
 
-label {
+label.title {
+	display: block;
 	cursor: pointer;
 }
 

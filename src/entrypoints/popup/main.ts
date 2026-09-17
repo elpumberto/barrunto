@@ -6,6 +6,7 @@ import { packById, packs } from '@/packs';
 import {
 	apiKey,
 	changePack,
+	changeSettings,
 	connection,
 	sessionCounters,
 	settings,
@@ -36,17 +37,28 @@ async function packOfThisTab(): Promise<Pack | null> {
 	);
 }
 
+// Everything it shows is read at once, not one thing after another: the popup is blank until then.
+const [connected, stored, pack, leave, session, total, key] = await Promise.all([
+	connection.getValue(),
+	settings.getValue(),
+	packOfThisTab(),
+	leaveHeld(),
+	sessionCounters.getValue(),
+	totalCounters.getValue(),
+	apiKey.getValue()
+]);
+
 let state: PopupState = {
-	connection: await connection.getValue(),
-	settings: await settings.getValue(),
+	connection: connected,
+	settings: stored,
 	packs,
-	pack: await packOfThisTab(),
-	leave: await leaveHeld(),
+	pack,
+	leave,
 	view: 'home',
 	about: null,
-	session: await sessionCounters.getValue(),
-	total: await totalCounters.getValue(),
-	keyTail: tailOf(await apiKey.getValue()),
+	session,
+	total,
+	keyTail: tailOf(key),
 	form: closedForm
 };
 
@@ -73,7 +85,9 @@ const actions: PopupActions = {
 	changeKey: () => set({ form: { ...closedForm, open: true } }),
 	cancelKey: () => set({ form: closedForm }),
 	removeKey: () => void send({ type: 'forgetKey' }),
-	setPaused: (paused) => void settings.setValue({ ...state.settings, paused }),
+	// From what is stored now, not from what the popup last saw: two switches moved one after the
+	// other, or the background turning a pack on meanwhile, would otherwise undo each other.
+	setPaused: (paused) => void changeSettings({ paused }),
 	setSensitivity: (packId, sensitivity) => {
 		const pack = packById(packId);
 		if (pack) void changePack(pack, () => ({ sensitivity }));
@@ -90,8 +104,8 @@ const actions: PopupActions = {
 		if (pack)
 			void changePack(pack, ({ options }) => ({ options: { ...options, [controlId]: on } }));
 	},
-	setTuning: (tuning) => void settings.setValue({ ...state.settings, tuning }),
-	setLookAhead: (lookAhead) => void settings.setValue({ ...state.settings, lookAhead }),
+	setTuning: (tuning) => void changeSettings({ tuning }),
+	setLookAhead: (lookAhead) => void changeSettings({ lookAhead }),
 	resetCounters: () => void send({ type: 'resetCounters' }),
 	go: (view) => set({ view }),
 	showAbout: (packId) => set({ about: state.about === packId ? null : packId }),
@@ -108,7 +122,8 @@ const actions: PopupActions = {
 		// Chrome takes a request for leave only straight from the user's click, and its question may
 		// close the popup before it is answered: the background turns the pack on when leave arrives.
 		// Leave already held raises no question, and then turning the pack on is for here.
-		if (await browser.permissions.request({ origins: pack.sites })) {
+		// Chrome may also refuse to ask at all; either way the pack stays off, and the switch shows it.
+		if (await browser.permissions.request({ origins: pack.sites }).catch(() => false)) {
 			await changePack(pack, () => ({ enabled: true }));
 		}
 	}

@@ -202,7 +202,7 @@ try {
 	// What the user would rather not see is folded away, and nothing else is.
 	await overThePage(/Hacker News/, async (real) => {
 		await real.click('[data-fold="noise"] summary');
-		await real.click('[data-action="treatment"][data-value="snark:hide"]');
+		await real.click('[data-action="treatment"][data-judgment="snark"][data-value="hide"]');
 	});
 	await page.bringToFront();
 	await page.waitForFunction(() => document.querySelector('[data-barrunto="fold"]'), {

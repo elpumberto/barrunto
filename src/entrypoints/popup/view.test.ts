@@ -135,7 +135,7 @@ describe('the popup', () => {
 			'Hide',
 			'Fade'
 		]);
-		click('[data-action="treatment"][data-value="tangent:label"]');
+		click('[data-action="treatment"][data-judgment="tangent"][data-value="label"]');
 		expect(actions.setTreatment).toHaveBeenCalledWith('hn', 'tangent', 'label');
 	});
 
@@ -167,6 +167,64 @@ describe('the popup', () => {
 			ahead.dispatchEvent(new Event('change', { bubbles: true }));
 			expect(actions.setLookAhead).toHaveBeenLastCalledWith(taken);
 		}
+	});
+
+	it('shows a number as it was taken, even when that is what was stored already', () => {
+		draw({});
+		const ahead = root.querySelector<HTMLInputElement>('#ahead')!;
+		ahead.value = '10.4';
+		ahead.dispatchEvent(new Event('change', { bubbles: true }));
+		expect(ahead.value).toBe('10');
+	});
+
+	it('keeps what is being typed in a field, and the focus on a fold, when something else changes', () => {
+		draw({});
+		const ahead = root.querySelector<HTMLInputElement>('#ahead')!;
+		ahead.focus();
+		ahead.value = '1';
+		draw({ session: { items: 8, tokensIn: 2000, tokensOut: 100 } });
+		expect(root.querySelector<HTMLInputElement>('#ahead')!.value).toBe('1');
+		expect(document.activeElement).toBe(root.querySelector('#ahead'));
+
+		root.querySelector<HTMLElement>('summary[data-fold="usage"]')!.focus();
+		draw({ session: { items: 9, tokensIn: 2100, tokensOut: 110 } });
+		expect(document.activeElement).toBe(root.querySelector('summary[data-fold="usage"]'));
+	});
+
+	it('draws nothing again when nothing it shows has changed', () => {
+		draw({});
+		const before = root.firstElementChild;
+		draw({});
+		expect(root.firstElementChild).toBe(before);
+	});
+
+	it('closes the other folds when one is opened, also where the browser does not', () => {
+		draw({
+			pack: hn,
+			settings: { ...connected.settings, packs: { hn: connected.settings.packs.x! } }
+		});
+		const [noise, usage] = ['noise', 'usage'].map((name) =>
+			root.querySelector<HTMLDetailsElement>(`details[data-fold="${name}"]`)!
+		);
+		noise!.open = true;
+		usage!.open = true;
+		usage!.dispatchEvent(new Event('toggle'));
+		expect(noise!.open).toBe(false);
+		expect(usage!.open).toBe(true);
+	});
+
+	it('takes the focus to where each screen starts, on reaching it', () => {
+		draw({});
+		draw({ view: 'packs' });
+		expect(document.activeElement).toBe(root.querySelector('[data-action="home"]'));
+		draw({ view: 'packs', form: { ...closedForm, open: true } });
+		expect(document.activeElement).toBe(root.querySelector('#key'));
+	});
+
+	it('does not say the key in use is rejected because another one was', () => {
+		draw({ form: { ...closedForm, open: true, failure: 'keyRejected' } });
+		expect(status()).toBe('Connected');
+		expect(root.querySelector('.failure')!.textContent).toContain('rejected this key');
 	});
 
 	it('lets a change of key be backed out of, and locks the form while checking', () => {

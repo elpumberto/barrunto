@@ -18,12 +18,12 @@ export const chip = ({ text, glyph, color, ink }: Judgment['label']) =>
 function noise(pack: Pack, chosen: PackSettings): string {
 	const judgments = pack.rules.judgments.filter((j) => j.noise);
 	if (!judgments.length) return '';
-	const asked = (j: Judgment) => chosen.treatments[j.id] ?? 'fade';
+	const asked = (j: Judgment) => chosen.treatments[j.id]!;
 	const rows = judgments.map(
 		(j) =>
-			`<div class="inline treatment">${chip(j.label)}<div class="stops three">${TREATMENTS.map(
+			`<div class="inline treatment">${chip(j.label)}<div class="stops three" role="group" aria-label="${j.label.text}">${TREATMENTS.map(
 				(t) =>
-					`<button type="button" data-action="treatment" data-pack="${pack.id}" data-value="${j.id}:${t}" aria-pressed="${t === asked(j)}">${texts.noise.treatments[t]}</button>`
+					`<button type="button" data-action="treatment" data-pack="${pack.id}" data-judgment="${j.id}" data-value="${t}" aria-pressed="${t === asked(j)}">${texts.noise.treatments[t]}</button>`
 			).join('')}</div></div>`
 	);
 	const count = (t: Treatment) => judgments.filter((j) => asked(j) === t).length;
@@ -49,7 +49,7 @@ export function packControls(pack: Pack, chosen: PackSettings): string {
 		)
 		.join('');
 	return `<div class="title">${texts.sensitivity.title}</div>
-		<div class="stops">${stops}</div>
+		<div class="stops" role="group" aria-label="${texts.sensitivity.title}">${stops}</div>
 		<p class="help">${texts.sensitivity.help[chosen.sensitivity]}</p>${noise(pack, chosen)}${own}`;
 }
 
@@ -61,12 +61,11 @@ export interface PackActions {
 
 /** Sends a click on one of a pack's controls to `actions`. Says whether the click was one of those. */
 export function onPackControl(button: HTMLElement | null, actions: PackActions): boolean {
-	const { action, pack, value } = button?.dataset ?? {};
+	const { action, pack, judgment, value } = button?.dataset ?? {};
 	if (!pack || !value) return false;
 	if (action === 'sensitivity') actions.setSensitivity(pack, value as Sensitivity);
-	else if (action === 'treatment') {
-		const [judgment, treatment] = value.split(':');
-		actions.setTreatment(pack, judgment!, treatment as Treatment);
+	else if (action === 'treatment' && judgment) {
+		actions.setTreatment(pack, judgment, value as Treatment);
 	} else if (action === 'option') {
 		actions.setOption(pack, value, button!.getAttribute('aria-checked') !== 'true');
 	} else return false;

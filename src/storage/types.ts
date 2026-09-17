@@ -1,7 +1,5 @@
 import type { PackSettings, Sensitivity, Usage } from '@/engine';
 
-// The popup may not use the engine; the sensitivity is part of the settings, and it gets it from here.
-export { SENSITIVITIES } from '@/engine';
 export type { PackSettings, Sensitivity, Usage };
 
 export interface Settings {

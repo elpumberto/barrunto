@@ -1,6 +1,6 @@
 import type { KeyFailure } from '@/messages';
-import type { Treatment } from '@/engine';
-import type { Sensitivity, Trouble } from '@/storage/types';
+import type { Sensitivity, Treatment } from '@/engine';
+import type { Trouble } from '@/storage/types';
 
 const meanwhile =
 	'Nothing gets a label meanwhile; Barrunto tries again with the next thing it reads.';
@@ -39,7 +39,8 @@ export const texts = {
 	packs: {
 		open: 'Rule packs',
 		back: 'Back',
-		on: (name: string) => `${name} on`,
+		/** What a pack's switch is called: the pack. That it is on or off, the switch says itself. */
+		on: (name: string) => name,
 		noneOn: 'No rule pack is on, so Barrunto reads nothing. Turn one on in Rule packs.',
 		notHere: 'There is no rule pack for this page.',
 		off: { title: 'This pack is off', help: 'Turn it on and Barrunto reads this site.' },
@@ -60,7 +61,7 @@ export const texts = {
 			low: 'Only the clear cases. Few labels, few misses.',
 			medium: 'A balance.',
 			high: 'Labels more, and gets more wrong.',
-			ultra: 'Labels at the faintest hunch. Expect plenty of misses.'
+			ultra: 'Labels at the faintest hunch. Many misses.'
 		} satisfies Record<Sensitivity, string>
 	},
 	counters: {
@@ -71,7 +72,7 @@ export const texts = {
 		items: 'Analyzed',
 		tokensIn: 'Tokens in',
 		tokensOut: 'Tokens out',
-		reset: 'Reset counters'
+		reset: 'Reset'
 	},
 	noise: {
 		title: 'Noise',
@@ -89,9 +90,11 @@ export const texts = {
 		title: 'Tuning mode',
 		help: "Shows Jev's answers on the page."
 	},
+	/** One line each: the band is up exactly when there is least room for it. What happens meanwhile is said on hover. */
 	trouble: {
-		tooManyCalls: `Jev is asking Barrunto to slow down. ${meanwhile}`,
-		serviceDown: `Jev is not answering (service down). ${meanwhile}`,
-		noNetwork: `No connection. ${meanwhile}`
-	} satisfies Record<Trouble, string>
+		meanwhile,
+		tooManyCalls: 'Jev is asking Barrunto to slow down.',
+		serviceDown: 'Jev is not answering.',
+		noNetwork: 'No connection.'
+	} satisfies Record<Trouble | 'meanwhile', string>
 };

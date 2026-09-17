@@ -8,7 +8,7 @@ import { onPackControl, packControls, toggle } from './pack-controls';
 import type { PackActions } from './pack-controls';
 import eyebrow from '@/assets/icon.svg?raw';
 import wordmark from '@/assets/wordmark.svg?raw';
-import { fold, redraw } from './redraw';
+import { fold, keepOneFoldOpen, redraw } from './redraw';
 import { packsView } from './packs-view';
 import { texts } from './texts';
 
@@ -22,7 +22,7 @@ export interface PopupState {
 	pack: Pack | null;
 	/** For each pack, by id, whether Chrome holds the user's leave for its sites. A pack is on when it is wanted and has it. */
 	leave: Record<string, boolean>;
-	/** Which view is up: the home view, about this page, or the catalogue of packs. */
+	/** Which view is up: the home view, which is about this page, or the catalogue of packs. */
 	view: 'home' | 'packs';
 	/** In the catalogue, the pack whose description is unfolded. */
 	about: string | null;
@@ -80,7 +80,8 @@ export function compact(value: number): string {
 /** The dot and the word at the top right. */
 function statusOf({ connection, settings, form }: PopupState): [dot: string, word: string] {
 	if (form.checking) return ['', texts.status.checking];
-	if (form.failure === 'keyRejected' || connection.state === 'keyRejected') {
+	// A key that was tried and refused says so in the form: the one in use may still be good.
+	if (connection.state === 'keyRejected') {
 		return ['bad', texts.status.keyRejected];
 	}
 	if (connection.state === 'noKey') return ['', texts.status.noKey];
@@ -93,7 +94,7 @@ function statusOf({ connection, settings, form }: PopupState): [dot: string, wor
 function head(state: PopupState, withSwitch: boolean): string {
 	const [dot, word] = statusOf(state);
 	return `<header class="head"><span class="icon">${eyebrow}</span><span class="wordmark" role="img" aria-label="Barrunto">${wordmark}</span>
-		<span class="status"><span class="dot ${dot}"></span>${word}</span>
+		<span class="status" aria-live="polite"><span class="dot ${dot}"></span>${word}</span>
 		${withSwitch ? toggle('pause', !state.settings.paused, texts.reading) : ''}</header>`;
 }
 
@@ -129,8 +130,8 @@ function analysis({ settings, pack, leave, packs }: PopupState): string {
 	}
 	return `<section class="row"><div class="eyebrow">${pack ? pack.name : texts.analysis}</div>
 		${ofThisPage}
-		<div class="inline"><label for="ahead"><div class="title">${texts.ahead.title}</div><p class="help">${texts.ahead.help}</p></label>
-			<input id="ahead" class="field count" type="number" min="0" max="${MOST_AHEAD}" step="1" value="${Number(settings.lookAhead) || 0}" title="${texts.ahead.none}" /></div>
+		<div class="inline"><div><label class="title" for="ahead">${texts.ahead.title}</label><p class="help" id="ahead-help">${texts.ahead.help}</p></div>
+			<input id="ahead" class="field count" type="number" min="0" max="${MOST_AHEAD}" step="1" value="${Number(settings.lookAhead) || 0}" title="${texts.ahead.none}" aria-describedby="ahead-help" /></div>
 		<div class="inline"><div><div class="title">${texts.tuning.title}</div><p class="help">${texts.tuning.help}</p></div>
 			${toggle('tuning', settings.tuning, texts.tuning.title)}</div></section>`;
 }
@@ -140,9 +141,8 @@ function api({ session, total, keyTail }: PopupState): string {
 	const counter = (name: string, key: keyof Counters) =>
 		`<tr><td>${name}</td><td>${compact(session[key])}</td><td>${compact(total[key])}</td></tr>`;
 	const usage = `<table class="counters">
-			<tr><th></th><th>${texts.counters.session}</th><th>${texts.counters.total}</th></tr>
-			${counter(texts.counters.items, 'items')}${counter(texts.counters.tokensIn, 'tokensIn')}${counter(texts.counters.tokensOut, 'tokensOut')}</table>
-		<button class="link end" type="button" data-action="reset">${texts.counters.reset}</button>`;
+			<tr><th><button class="link" type="button" data-action="reset">${texts.counters.reset}</button></th><th>${texts.counters.session}</th><th>${texts.counters.total}</th></tr>
+			${counter(texts.counters.items, 'items')}${counter(texts.counters.tokensIn, 'tokensIn')}${counter(texts.counters.tokensOut, 'tokensOut')}</table>`;
 	const brief = texts.counters.brief(
 		compact(session.items),
 		compact(session.tokensIn + session.tokensOut)
@@ -157,11 +157,19 @@ function api({ session, total, keyTail }: PopupState): string {
 /** Two blocks: how things are analyzed on this page, and what goes on with Jev. */
 function working(state: PopupState): string {
 	const { connection } = state;
-	return `${connection.state === 'trouble' ? `<p class="band">${texts.trouble[connection.reason]}</p>` : ''}
+	return `${connection.state === 'trouble' ? `<p class="band" title="${texts.trouble.meanwhile}">${texts.trouble[connection.reason]}</p>` : ''}
 	${analysis(state)}
 	${api(state)}
 	<footer class="foot"><button class="link" type="button" data-action="packs">${texts.packs.open} →</button></footer>`;
 }
+
+/** Which screen each popup shows, and where the focus goes on reaching each. */
+const shown = new WeakMap<HTMLElement, string>();
+const STARTS_AT: Record<string, string> = {
+	key: '#key',
+	packs: '[data-action="home"]',
+	home: '[data-action="packs"]'
+};
 
 /**
  * Draws the popup for this state inside `root`, and sends what the user does to `actions`.
@@ -172,12 +180,20 @@ export function renderPopup(root: HTMLElement, state: PopupState, actions: Popup
 	const { connection, settings, form } = state;
 	const needsKey = connection.state === 'noKey' || connection.state === 'keyRejected';
 	const asksKey = needsKey || form.open;
+	const screen = asksKey ? 'key' : state.view;
 	const body = asksKey
 		? keyForm(state, !needsKey)
 		: state.view === 'packs'
 			? packsView(state)
 			: working(state);
 	redraw(root, head(state, !asksKey) + body);
+
+	// On a change of screen what had the focus is gone: it goes to where the new one starts.
+	if (shown.get(root) !== screen) {
+		if (shown.has(root)) root.querySelector<HTMLElement>(STARTS_AT[screen]!)?.focus();
+		else keepOneFoldOpen(root);
+		shown.set(root, screen);
+	}
 
 	const field = root.querySelector<HTMLInputElement>('#key');
 	if (field) field.value = form.typed;
@@ -187,8 +203,10 @@ export function renderPopup(root: HTMLElement, state: PopupState, actions: Popup
 		const changed = event.target as HTMLInputElement;
 		if (changed.id !== 'ahead') return;
 		// Whatever is typed, a whole number of items within bounds.
-		const items = Math.round(Number(changed.value)) || 0;
-		actions.setLookAhead(Math.max(0, Math.min(MOST_AHEAD, items)));
+		const items = Math.max(0, Math.min(MOST_AHEAD, Math.round(Number(changed.value)) || 0));
+		// Shown as it was taken: if that is what is stored already, nothing comes back to redraw it.
+		changed.value = String(items);
+		actions.setLookAhead(items);
 	};
 	root.onsubmit = (event) => {
 		event.preventDefault();
