@@ -86,6 +86,10 @@ export const texts = {
 		help: 'Items read before you get to them.',
 		none: 'With 0, Barrunto asks only about what stays on screen for a moment.'
 	},
+	drafts: {
+		title: 'Check my drafts',
+		help: 'Reads your own post as you write it.'
+	},
 	tuning: {
 		title: 'Tuning mode',
 		help: "Shows Jev's answers on the page."

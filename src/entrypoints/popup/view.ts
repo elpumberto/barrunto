@@ -56,6 +56,7 @@ export interface PopupActions extends PackActions {
 	setPaused(paused: boolean): void;
 	setTuning(tuning: boolean): void;
 	setLookAhead(items: number): void;
+	setCheckDrafts(checkDrafts: boolean): void;
 	resetCounters(): void;
 	go(view: PopupState['view']): void;
 	/** Unfolds what a pack is about, or folds it back if it was the one unfolded. */
@@ -132,6 +133,8 @@ function analysis({ settings, pack, leave, packs }: PopupState): string {
 		${ofThisPage}
 		<div class="inline"><div><label class="title" for="ahead">${texts.ahead.title}</label><p class="help" id="ahead-help">${texts.ahead.help}</p></div>
 			<input id="ahead" class="field count" type="number" min="0" max="${MOST_AHEAD}" step="1" value="${Number(settings.lookAhead) || 0}" title="${texts.ahead.none}" aria-describedby="ahead-help" /></div>
+		<div class="inline"><div><div class="title">${texts.drafts.title}</div><p class="help">${texts.drafts.help}</p></div>
+			${toggle('drafts', settings.checkDrafts, texts.drafts.title)}</div>
 		<div class="inline"><div><div class="title">${texts.tuning.title}</div><p class="help">${texts.tuning.help}</p></div>
 			${toggle('tuning', settings.tuning, texts.tuning.title)}</div></section>`;
 }
@@ -218,6 +221,8 @@ export function renderPopup(root: HTMLElement, state: PopupState, actions: Popup
 		switch (button?.dataset.action) {
 			case 'pause':
 				return actions.setPaused(!settings.paused);
+			case 'drafts':
+				return actions.setCheckDrafts(!settings.checkDrafts);
 			case 'tuning':
 				return actions.setTuning(!settings.tuning);
 			case 'reset':

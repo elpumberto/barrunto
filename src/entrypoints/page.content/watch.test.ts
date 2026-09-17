@@ -50,6 +50,7 @@ const chosen = (
 	paused: false,
 	tuning: false,
 	lookAhead: 0,
+	checkDrafts: true,
 	packs: { x: { enabled: true, sensitivity, treatments: {} } },
 	...change
 });

@@ -1,5 +1,6 @@
 import type { PageHalf } from '@/engine';
 import type { Post } from '../post';
+import { drafts } from './draft';
 import { findPosts, labelAnchor, labelPlace, postId, readPost, tuningAnchor } from './read';
 
 export const page: PageHalf<Post> = {
@@ -17,5 +18,6 @@ export const page: PageHalf<Post> = {
 	parts(article) {
 		const all = article.firstElementChild instanceof HTMLElement ? [article.firstElementChild] : [];
 		return { faded: all, hidden: all };
-	}
+	},
+	drafts
 };

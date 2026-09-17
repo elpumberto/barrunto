@@ -162,4 +162,22 @@ export interface PageHalf<I extends Item = Item> {
 	 * named in that line.
 	 */
 	parts(element: HTMLElement): { faded: HTMLElement[]; hidden: HTMLElement[] };
+	/** What the user writes on this site, for a pack that can tell them how it would be read. */
+	drafts?: DraftsHalf<I>;
+}
+
+/**
+ * What the user is writing on the page, read as one more item of the pack's: the same questions are
+ * asked of it as of everyone else's, and the answer is shown to its author alone, before it is posted.
+ */
+export interface DraftsHalf<I extends Item = Item> {
+	/** The boxes the user writes in that are on the page now. */
+	find(root: ParentNode): HTMLElement[];
+	/**
+	 * What is written in a box, as an item. Its id has to change with its words: the answers are kept
+	 * under it. Too little to say anything about is skipped.
+	 */
+	read(box: HTMLElement): Reading<I>;
+	/** The element the hunch about it goes at the end of. */
+	anchor(box: HTMLElement): HTMLElement;
 }

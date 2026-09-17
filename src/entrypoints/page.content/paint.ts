@@ -1,5 +1,6 @@
 import { SENSITIVITIES } from '@/engine';
 import type { Judgment, LabelPlace, Sensitivity, Treatment } from '@/engine';
+import draftCss from './draft.css?inline';
 import foldCss from './fold.css?inline';
 import type { Ground } from './ground';
 import logo from '@/assets/icon.svg?raw';
@@ -112,12 +113,16 @@ export function clearLabels(anchor: HTMLElement): void {
 export function paintWaiting(anchor: HTMLElement, place: LabelPlace): void {
 	const root = labelsRoot(anchor, place);
 	if (root.querySelector('.waiting, .label')) return;
+	root.append(waitingNode());
+}
+
+function waitingNode(): HTMLElement {
 	const waiting = el('span', 'waiting');
 	waiting.title = 'Barrunto is asking Jev about this.';
 	// The drawing is Barrunto's own, a file in its code.
 	waiting.innerHTML = logo;
 	waiting.append(el('i', 'dot'), el('i', 'dot'), el('i', 'dot'));
-	root.append(waiting);
+	return waiting;
 }
 
 /** How much of itself a faded item keeps. */
@@ -278,5 +283,81 @@ export function paintTuning(
 	box.append(brief, whole);
 	// Unfolding the detail is not a click on the item.
 	box.addEventListener('click', (event) => event.stopPropagation());
+	root.append(box);
+}
+
+/** What is said of what the user is writing: that Jev is being asked, what came of it, or why nothing did. */
+export type Hunch =
+	| { state: 'waiting' }
+	| { state: 'failed'; reason: string }
+	| {
+			state: 'told';
+			sensitivity: Sensitivity;
+			/** The judgments some reader would get a label for, however high their sensitivity. */
+			rows: { judgment: Judgment; strength: number; from: Sensitivity }[];
+	  };
+
+const FROM: Record<Sensitivity, string> = {
+	low: 'even at Low',
+	medium: 'from Medium',
+	high: 'from High',
+	ultra: 'only at Ultra'
+};
+
+export function clearDraft(anchor: HTMLElement): void {
+	anchor.querySelector(`:scope > [${MARK}="draft"]`)?.remove();
+}
+
+/** Dims what is said of a draft whose words have changed since, until it is said again. */
+export function staleDraft(anchor: HTMLElement): void {
+	anchor.querySelector(`:scope > [${MARK}="draft"]`)?.setAttribute('data-stale', '');
+}
+
+/**
+ * Puts at the end of `anchor` how what is being written there would be read: the labels it may get,
+ * how strong each hunch is, and the sensitivity from which a reader gets that label.
+ */
+export function paintDraft(anchor: HTMLElement, hunch: Hunch, ground: Ground): void {
+	const root = shadowIn(anchor, 'draft', labelCss + draftCss);
+	const host = root.host as HTMLElement;
+	host.dataset.ground = ground;
+	// While Jev is asked again, what was said before stays, dimmed: the box must not jump under the hands.
+	if (hunch.state === 'waiting' && root.querySelector('.hunch:not(.asking)')) {
+		host.setAttribute('data-stale', '');
+		return;
+	}
+	host.removeAttribute('data-stale');
+	root.querySelector('.hunch')?.remove();
+
+	const box = el('div', hunch.state === 'waiting' ? 'hunch asking' : 'hunch');
+	const said = (text: string) => {
+		const line = el('div', 'said');
+		// The drawing is Barrunto's own, a file in its code.
+		line.innerHTML = logo;
+		line.append(text);
+		return line;
+	};
+	if (hunch.state === 'waiting') box.append(waitingNode());
+	else if (hunch.state === 'failed') box.append(said(`Not checked: ${hunch.reason}.`));
+	else if (!hunch.rows.length) box.append(said('Nothing stands out. A hunch, not a verdict.'));
+	else {
+		box.append(said('How readers may get this. A hunch, not a verdict.'));
+		const { sensitivity } = hunch;
+		const reaches = (from: Sensitivity) =>
+			SENSITIVITIES.indexOf(from) <= SENSITIVITIES.indexOf(sensitivity);
+		for (const { judgment, strength, from } of hunch.rows) {
+			const row = el('div', reaches(from) ? 'row up' : 'row');
+			row.dataset.id = judgment.id;
+			row.style.setProperty('--color', judgment.label.color);
+			const when = el('span', '', FROM[from]);
+			when.title = `Readers get this label with their sensitivity at ${from} or above.`;
+			row.append(
+				labelNode(judgment, false),
+				bar(strength, { thresholds: judgment.thresholds, current: sensitivity }),
+				when
+			);
+			box.append(row);
+		}
+	}
 	root.append(box);
 }

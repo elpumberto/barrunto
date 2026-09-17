@@ -29,5 +29,15 @@ export const selectors = {
 	/** The three buttons under the post whose counts Barrunto reads. */
 	replies: '[data-testid="reply"]',
 	reposts: '[data-testid="retweet"], [data-testid="unretweet"]',
-	likes: '[data-testid="like"], [data-testid="unlike"]'
+	likes: '[data-testid="like"], [data-testid="unlike"]',
+	/** A box a post is written in: `tweetTextarea_0`, and `_1` onwards for the rest of a thread. */
+	draft: '[contenteditable="true"][data-testid^="tweetTextarea_"]',
+	/** A paragraph of the editor inside it. */
+	draftLine: '[data-block="true"]',
+	/** The user's own picture next to what they write. Its name ends in their handle. */
+	ownPicture: '[data-testid^="UserAvatar-Container-"]',
+	/** Images and video attached to what is being written. */
+	attached: '[data-testid="attachments"]',
+	/** The window a post is written in, when it is written in one and not at the top of the timeline. */
+	composer: '[role="dialog"]'
 };

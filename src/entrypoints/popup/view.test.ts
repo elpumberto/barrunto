@@ -10,6 +10,7 @@ const connected: PopupState = {
 		paused: false,
 		tuning: false,
 		lookAhead: 10,
+		checkDrafts: true,
 		packs: { x: { enabled: true, sensitivity: 'medium', treatments: {} } }
 	},
 	packs: [x, hn],
@@ -34,6 +35,7 @@ const actions = {
 	setTreatment: vi.fn(),
 	setTuning: vi.fn(),
 	setLookAhead: vi.fn(),
+	setCheckDrafts: vi.fn(),
 	resetCounters: vi.fn(),
 	go: vi.fn(),
 	showAbout: vi.fn(),
@@ -217,6 +219,8 @@ describe('the popup', () => {
 		expect(actions.setPaused).toHaveBeenCalledWith(true);
 		click('[data-action="sensitivity"][data-value="ultra"]');
 		expect(actions.setSensitivity).toHaveBeenCalledWith('x', 'ultra');
+		click('[data-action="drafts"]');
+		expect(actions.setCheckDrafts).toHaveBeenCalledWith(false);
 		click('[data-action="tuning"]');
 		expect(actions.setTuning).toHaveBeenCalledWith(true);
 		click('[data-action="reset"]');

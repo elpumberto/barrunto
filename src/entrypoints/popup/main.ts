@@ -102,6 +102,7 @@ const actions: PopupActions = {
 
 	setTuning: (tuning) => void changeSettings({ tuning }),
 	setLookAhead: (lookAhead) => void changeSettings({ lookAhead }),
+	setCheckDrafts: (checkDrafts) => void changeSettings({ checkDrafts }),
 	resetCounters: () => void send({ type: 'resetCounters' }),
 	go: (view) => set({ view }),
 	showAbout: (packId) => set({ about: state.about === packId ? null : packId }),

@@ -13,7 +13,7 @@ function present(post: Post): Presented {
 	const { author, text, metrics, hasMedia, hasLink, inThread, isCutShort, quoted } = post;
 	return {
 		post: {
-			author: `${author.name} (${author.handle})`,
+			author: author.handle ? `${author.name} (${author.handle})` : author.name,
 			text: cut(text),
 			text_is_cut_short: isCutShort,
 			replies: metrics.replies,

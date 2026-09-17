@@ -1,7 +1,7 @@
 // Loads the built extension into a headless Chrome and walks the whole path once, with no network:
 // a bad key, a good key, a pack turned on in the popup's catalogue, a made-up x.com page, labels on
 // the posts that dwell, a change of sensitivity in the popup opened over the page reaching it,
-// counters; then a made-up Hacker News thread, left alone while its pack is off and labelled
+// counters, a post of the user's own read as they write it; then a made-up Hacker News thread, left alone while its pack is off and labelled
 // without a reload once it is turned on.
 // It needs the stand-in build, which also holds leave for every pack's site: `npm run smoke`.
 import assert from 'node:assert/strict';
@@ -14,6 +14,7 @@ const POSTS = 12;
 const ON_SCREEN = 5;
 const COMMENTS = 9;
 const AHEAD = 2;
+const DRAFTS = 1;
 /** How many of the made-up comments fit the screen: the story's title takes a little of it. */
 const IN_SIGHT = 5;
 
@@ -33,7 +34,10 @@ const post = (
 		<div role="group"><button data-testid="reply" aria-label="${n * 40} Replies. Reply"></button>
 			<button data-testid="retweet" aria-label="3 reposts. Repost"></button>
 			<button data-testid="like" aria-label="${n * 7} Likes. Like"></button></div></div></article></div></div></div>`;
-const home = `<!doctype html><body style="margin:0;background:#fff">${Array.from({ length: POSTS }, (_, n) => post(n)).join('')}</body>`;
+// Where a post is written, as X.com has it: the box next to its author's picture. Out of the way of the posts.
+const composer = `<div style="position:fixed;right:0;bottom:0;width:300px;display:flex"><div><div data-testid="UserAvatar-Container-me"></div></div>
+	<div id="draft"><div contenteditable="true" data-testid="tweetTextarea_0" style="min-height:20px"></div></div></div>`;
+const home = `<!doctype html><body style="margin:0;background:#fff">${Array.from({ length: POSTS }, (_, n) => post(n)).join('')}${composer}</body>`;
 
 const comment = (
 	n
@@ -189,6 +193,20 @@ try {
 	assert.ok(onUltra > onMedium, 'ultra labels more than medium');
 	assert.ok(labels.slice(ON_SCREEN).flat().length === 0, 'posts never on screen get no label');
 
+	// What the user writes is read as one more post, once they stop typing, and told to them alone.
+	await page.bringToFront();
+	await page.type(
+		'[data-testid="tweetTextarea_0"]',
+		'A made-up post of my own, long enough to ask about.'
+	);
+	await page.waitForFunction(
+		() =>
+			document.querySelector('#draft > [data-barrunto="draft"]')?.shadowRoot.querySelector('.said'),
+		{ timeout: 8000 }
+	);
+	await popup.bringToFront();
+	assert.equal(await analyzed(), ON_SCREEN + DRAFTS, 'the draft is asked about once');
+
 	// A pack that is off acts nowhere; turned on, it reads its own site with its own labels.
 	await page.bringToFront();
 	await page.goto('https://news.ycombinator.com/item?id=1');
@@ -237,7 +255,7 @@ try {
 	await popup.bringToFront();
 	assert.equal(
 		await analyzed(),
-		ON_SCREEN + IN_SIGHT + AHEAD,
+		ON_SCREEN + DRAFTS + IN_SIGHT + AHEAD,
 		'the comments in sight and the ones read ahead are counted with the posts, and no others'
 	);
 

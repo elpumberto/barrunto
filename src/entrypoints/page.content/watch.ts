@@ -69,7 +69,7 @@ const drawn = (element: HTMLElement) => element.checkVisibility?.() ?? true;
 const analyzed = (outcome: Outcome | undefined) =>
 	outcome !== undefined && 'item' in outcome && outcome.analysis.analyzed;
 
-async function connectionNow(tries = STATUS_TRIES.times): Promise<ConnectionStatus> {
+export async function connectionNow(tries = STATUS_TRIES.times): Promise<ConnectionStatus> {
 	try {
 		return await connection.getValue();
 	} catch (error) {

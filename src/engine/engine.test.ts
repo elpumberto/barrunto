@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { clears, contributions, labelsFor, strength, strengthsFor, treatmentFor } from '.';
+import {
+	clears,
+	contributions,
+	labelledFrom,
+	labelsFor,
+	strength,
+	strengthsFor,
+	treatmentFor
+} from '.';
 import type { Item, Judgment, Rules } from '.';
 
 /** An item of a made-up pack: the engine knows nothing of what is in one. */
@@ -93,6 +101,16 @@ describe('labelsFor', () => {
 		expect(clears(rules.judgments[0]!, 0.3, 'ultra')).toBe(true);
 		expect(clears(rules.judgments[0]!, 0.29, 'ultra')).toBe(false);
 		expect(labelsFor(rules.judgments, { a: 0.75 }, 'low')).toHaveLength(1);
+	});
+});
+
+describe('labelledFrom', () => {
+	it('is the lowest sensitivity at which a strength gets the label, if any', () => {
+		const [judgment] = rules.judgments;
+		const { low, ultra } = judgment!.thresholds;
+		expect(labelledFrom(judgment!, low)).toBe('low');
+		expect(labelledFrom(judgment!, ultra)).toBe('ultra');
+		expect(labelledFrom(judgment!, ultra - 0.01)).toBeNull();
 	});
 });
 

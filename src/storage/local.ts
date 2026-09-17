@@ -32,7 +32,8 @@ const HN_NOISE = ['snark', 'tangent'];
 /** A pack's settings in versions 2 and 3: before each noise judgment had its treatment, when fading was a control of Hacker News's own. */
 type PackSettingsV3 = Omit<PackSettings, 'treatments'> & { options?: Record<string, boolean> };
 /** Version 4 still kept a place for controls of a pack's own, which no pack has. */
-type SettingsV4 = Omit<Settings, 'packs'> & {
+type SettingsV5 = Omit<Settings, 'checkDrafts'>;
+type SettingsV4 = Omit<SettingsV5, 'packs'> & {
 	packs: Record<string, PackSettings & { options?: unknown }>;
 };
 interface SettingsV2 {
@@ -44,7 +45,7 @@ type SettingsV3 = SettingsV2 & { lookAhead: number };
 
 export const settings = storage.defineItem<Settings>('local:settings', {
 	fallback: defaultSettings,
-	version: 5,
+	version: 6,
 	migrations: {
 		// X.com stays on for whoever had it, with the sensitivity they had chosen.
 		2: ({ paused, sensitivity, tuning }: SettingsV1): SettingsV2 => ({
@@ -69,7 +70,7 @@ export const settings = storage.defineItem<Settings>('local:settings', {
 				})
 			)
 		}),
-		5: ({ packs: before, ...rest }: SettingsV4): Settings => ({
+		5: ({ packs: before, ...rest }: SettingsV4): SettingsV5 => ({
 			...rest,
 			packs: Object.fromEntries(
 				Object.entries(before).map(([id, { enabled, sensitivity, treatments }]) => [
@@ -77,7 +78,8 @@ export const settings = storage.defineItem<Settings>('local:settings', {
 					{ enabled, sensitivity, treatments }
 				])
 			)
-		})
+		}),
+		6: (before: SettingsV5): Settings => ({ ...before, checkDrafts: defaultSettings.checkDrafts })
 	}
 });
 

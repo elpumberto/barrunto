@@ -10,6 +10,8 @@ export interface Settings {
 	 * With none, an item is asked about only once it has stayed on screen for a moment.
 	 */
 	lookAhead: number;
+	/** Whether what the user writes on a site is read too, to tell them how it would be read, where a pack can. */
+	checkDrafts: boolean;
 	/** What the user has chosen for each pack, by pack id. A pack that is not here is as it ships: off. */
 	packs: Record<string, PackSettings>;
 }
@@ -32,4 +34,10 @@ export type ConnectionStatus =
 export const MOST_AHEAD = 50;
 
 /** Settings as they are until the user changes them. The page's copy starts the same, before the background fills it in. */
-export const defaultSettings: Settings = { paused: false, tuning: false, lookAhead: 3, packs: {} };
+export const defaultSettings: Settings = {
+	paused: false,
+	tuning: false,
+	lookAhead: 3,
+	checkDrafts: true,
+	packs: {}
+};

@@ -74,6 +74,7 @@ describe('what is chosen for a pack', () => {
 			paused: true,
 			tuning: false,
 			lookAhead: 3,
+			checkDrafts: true,
 			packs: { x: { enabled: true, sensitivity: 'high', treatments: {} } }
 		});
 		expect(await totalCounters.getValue()).toEqual({ items: 7, tokensIn: 70, tokensOut: 7 });

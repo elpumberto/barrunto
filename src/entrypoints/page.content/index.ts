@@ -2,6 +2,7 @@ import { defineContentScript } from 'wxt/utils/define-content-script';
 import { MatchPattern } from 'wxt/utils/match-patterns';
 import { packs } from '@/packs';
 import { pages } from '@/packs/pages';
+import { watchDrafts } from './drafts';
 import { watchPage } from './watch';
 
 export default defineContentScript({
@@ -15,6 +16,8 @@ export default defineContentScript({
 		);
 		const page = pack && pages[pack.id];
 		if (!page) return;
-		watchPage(ctx, pack, page).catch((error) => console.error('[barrunto] could not start', error));
+		const failed = (error: unknown) => console.error('[barrunto] could not start', error);
+		watchPage(ctx, pack, page).catch(failed);
+		if (page.drafts) watchDrafts(ctx, pack, page.drafts).catch(failed);
 	}
 });
