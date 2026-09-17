@@ -32,7 +32,7 @@ From then on labels turn up on their own as you read; hover over one to see what
 
 The popup is built around the page it is opened over. The switch at the top pauses Barrunto. Then comes how that page is analyzed: its pack's **sensitivity** (on *Low* only the clear cases get a label, and each step up labels more and gets more wrong, up to *Ultra*, which labels at the faintest hunch; moving it asks Jev nothing, the answers are already there), whatever controls the pack brings of its own (Hacker News can fade the comments it labels Snark or Tangent) and tuning mode. Last, what goes on with Jev: how much has been analyzed and the tokens that took, and the key.
 
-**Tuning mode** shows under each post or comment what Jev answered to every question and how each judgment added up. It is the way to see why something got the label it got, and the tool for adjusting the questions and the recipes.
+**Tuning mode** puts under each post or comment one line with how each judgment came out; click it and it unfolds what Jev answered to every question and how each judgment added up. It is the way to see why something got the label it got, and the tool for adjusting the questions and the recipes.
 
 The icon in the toolbar is in colour while Barrunto reads, grey while it is paused, has no key or has no pack on, and carries a `!` when the key is rejected or Jev is failing.
 

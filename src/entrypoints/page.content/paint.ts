@@ -1,6 +1,7 @@
 import { SENSITIVITIES } from '@/engine';
 import type { Judgment, LabelPlace, Sensitivity } from '@/engine';
 import type { Ground } from './ground';
+import logo from '@/assets/icon.svg?raw';
 import labelsCss from './labels.css?inline';
 import type { Tuning } from './tuning';
 import tuningCss from './tuning.css?inline';
@@ -109,19 +110,27 @@ export function clearTuning(anchor: HTMLElement): void {
 	anchor.querySelector(`:scope > [${MARK}="tuning"]`)?.remove();
 }
 
-/** Puts the tuning detail at the end of `anchor`, in place of the one there. */
+/**
+ * Puts the tuning detail at the end of `anchor`, in place of the one there: one line with how each
+ * judgment came out, which unfolds into everything that went into them. Among many items the page
+ * has to stay readable, so the whole of it shows only where it is asked for, and stays open there.
+ */
 export function paintTuning(anchor: HTMLElement, tuning: Tuning, ground: Ground): void {
 	const root = shadowIn(anchor, 'tuning', tuningCss);
 	(root.host as HTMLElement).dataset.ground = ground;
+	const wasOpen = root.querySelector<HTMLDetailsElement>('details.box')?.open ?? false;
 	root.querySelector('.box')?.remove();
 
-	const box = el('div', 'box');
-	root.append(box);
 	if (!tuning.analyzed) {
-		box.textContent = `not analyzed: ${tuning.reason}`;
+		root.append(el('div', 'box', `not analyzed: ${tuning.reason}`));
 		return;
 	}
 
+	const brief = el('summary', 'brief');
+	// Whose line this is, among the page's own. The drawing is Barrunto's, a file in its code.
+	const mark = el('span', 'logo');
+	mark.innerHTML = logo;
+	brief.append(mark);
 	const inputs = el('div', 'traits');
 	for (const input of tuning.inputs) {
 		const row = el('div', 'row');
@@ -135,6 +144,11 @@ export function paintTuning(anchor: HTMLElement, tuning: Tuning, ground: Ground)
 
 	const judgments = el('div', 'judgments');
 	for (const { judgment, strength, labelled, parts } of tuning.judgments) {
+		const name = `${labelled ? '●' : '○'} ${judgment.label.text}`;
+		const inBrief = el('span', labelled ? 'up' : '', `${name} ${strength.toFixed(2)}`);
+		inBrief.style.setProperty('--color', judgment.label.color);
+		brief.append(inBrief);
+
 		const row = el('div', labelled ? 'row up' : 'row');
 		row.style.setProperty('--color', judgment.label.color);
 		const said = parts
@@ -142,7 +156,7 @@ export function paintTuning(anchor: HTMLElement, tuning: Tuning, ground: Ground)
 			.map((p) => `${p.name} ${signed(p.amount)}`)
 			.join(' · ');
 		row.append(
-			el('span', '', `${labelled ? '●' : '○'} ${judgment.label.text}`),
+			el('span', '', name),
 			bar(strength, { thresholds: judgment.thresholds, current: tuning.sensitivity }),
 			el('span', '', strength.toFixed(2)),
 			el('span', 'parts', said)
@@ -150,7 +164,8 @@ export function paintTuning(anchor: HTMLElement, tuning: Tuning, ground: Ground)
 		judgments.append(row);
 	}
 
-	box.append(
+	const whole = el('div', 'whole');
+	whole.append(
 		inputs,
 		judgments,
 		el(
@@ -159,4 +174,10 @@ export function paintTuning(anchor: HTMLElement, tuning: Tuning, ground: Ground)
 			`* page signal, no model · answers count past ${tuning.doubt.toFixed(2)} · ticks: low, medium, high and ultra thresholds`
 		)
 	);
+	const box = el('details', 'box');
+	box.open = wasOpen;
+	box.append(brief, whole);
+	// Unfolding the detail is not a click on the item.
+	box.addEventListener('click', (event) => event.stopPropagation());
+	root.append(box);
 }
