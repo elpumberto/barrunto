@@ -152,8 +152,9 @@ export interface PageHalf<I extends Item = Item> {
 	labelAnchor(element: HTMLElement): HTMLElement;
 	/** Where in the anchor they go: the same for every item, or worked out for each where the page is not regular. */
 	labelPlace: LabelPlace | ((element: HTMLElement) => LabelPlace);
-	/** The element the tuning detail goes at the end of. */
+	/** The element the tuning detail goes at the end of, and how far in from its left edge, as a CSS length. */
 	tuningAnchor(element: HTMLElement): HTMLElement;
+	tuningInset?: string;
 	/**
 	 * What of the item goes when the user would rather not see it, which is the pack's to choose.
 	 * Faded, as a rule, its words and what goes with them. Hidden, all of it, with who wrote it: a line saying that it is hidden takes its

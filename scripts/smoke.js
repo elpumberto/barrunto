@@ -23,13 +23,16 @@ assert.ok(
 	'this build talks to the real Jev: build with `npm run build:stand-in`'
 );
 
-const post = (n) => `<article data-testid="tweet" style="position:relative;height:160px">
+// As X.com has them: each post in a box of the timeline, with an element of its own around it.
+const post = (
+	n
+) => `<div data-testid="cellInnerDiv"><div><div><article data-testid="tweet" style="position:relative;height:160px">
 	<div data-testid="User-Name"><a href="/user${n}"><span>User ${n}</span></a><a href="/user${n}"><span>@user${n}</span></a>
 		<a href="/user${n}/status/${1000 + n}"><time>2h</time></a></div>
 	<div><div data-testid="tweetText"><span>Made-up post number ${n}, with a few words in it.</span></div>
 		<div role="group"><button data-testid="reply" aria-label="${n * 40} Replies. Reply"></button>
 			<button data-testid="retweet" aria-label="3 reposts. Repost"></button>
-			<button data-testid="like" aria-label="${n * 7} Likes. Like"></button></div></div></article>`;
+			<button data-testid="like" aria-label="${n * 7} Likes. Like"></button></div></div></article></div></div></div>`;
 const home = `<!doctype html><body style="margin:0;background:#fff">${Array.from({ length: POSTS }, (_, n) => post(n)).join('')}</body>`;
 
 const comment = (
@@ -40,7 +43,7 @@ const comment = (
 const thread = `<!doctype html><body style="margin:0"><table class="fatitem"><tr><td><span class="titleline"><a href="#">A made-up story</a></span></td></tr></table>
 	<table>${Array.from({ length: COMMENTS }, (_, n) => comment(n)).join('')}</table></body>`;
 
-const labelsOnPage = (page, items = 'article', anchor = ':scope >') =>
+const labelsOnPage = (page, items = '[data-testid="cellInnerDiv"]', anchor = ':scope >') =>
 	page.$$eval(
 		items,
 		(articles, anchor) =>
@@ -157,7 +160,7 @@ try {
 			.catch(() => {});
 		assert.equal(await page.evaluate(looked, items), count, `${count} of ${items} are looked at`);
 	};
-	await waitForLooked('article', ON_SCREEN);
+	await waitForLooked('[data-testid="cellInnerDiv"] > div > div', ON_SCREEN);
 	await popup.bringToFront();
 	const analyzed = () =>
 		popup.$eval('.counters tr:nth-child(2) td:nth-child(2)', (el) => Number(el.textContent));

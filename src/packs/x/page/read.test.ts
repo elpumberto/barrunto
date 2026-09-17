@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { findPosts, labelAnchor, labelPlace, postId, readPost } from './read';
+import { findPosts, labelAnchor, labelPlace, postId, readPost, tuningAnchor } from './read';
 
 /** A post shaped like X.com's, with made-up people and words. */
 const article = (inner: string) => `<article data-testid="tweet">${inner}</article>`;
@@ -144,6 +144,25 @@ describe('labelAnchor', () => {
 		const [boxed, bare] = [...document.querySelectorAll('article')];
 		expect(labelAnchor(boxed!).dataset.testid).toBe('cellInnerDiv');
 		expect(labelAnchor(bare!)).toBe(bare);
+	});
+});
+
+describe('tuningAnchor', () => {
+	// X.com lays a post out as a row: what is put inside it lands beside its content and squeezes it.
+	it('is around the post and not the post itself, nor anything that is faded or hidden with it', () => {
+		document.body.innerHTML =
+			'<div data-testid="cellInnerDiv"><div id="around"><article data-testid="tweet"><div id="content"></div></article></div></div>';
+		const post = document.querySelector('article')!;
+		expect(tuningAnchor(post).id).toBe('around');
+		expect(tuningAnchor(post).contains(post)).toBe(true);
+	});
+
+	it('is the post itself where several share what is around them, so that each keeps its own detail', () => {
+		document.body.innerHTML =
+			'<div><article data-testid="tweet"></article><article data-testid="tweet"></article></div>';
+		const [first, second] = [...document.querySelectorAll('article')];
+		expect(tuningAnchor(first!)).toBe(first);
+		expect(tuningAnchor(second!)).toBe(second);
 	});
 });
 

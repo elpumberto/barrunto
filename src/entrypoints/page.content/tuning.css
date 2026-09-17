@@ -3,7 +3,8 @@
 	--strong: #0f1419;
 	--track: #eff3f4;
 	display: block;
-	margin-top: 4px;
+	/* How far in is the pack's to say: in line with the item's words, wherever the page puts them. */
+	margin: 4px 16px 8px var(--inset, 0);
 }
 
 :host([data-ground='dark']) {

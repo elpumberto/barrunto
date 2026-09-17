@@ -146,7 +146,13 @@ export function labelPlace(article: HTMLElement): Exclude<LabelPlace, 'inline'> 
 }
 
 /**
- * Where the tuning detail goes: at the end of the post, outside what is faded or hidden with it, so
- * that why a post was hidden can be seen without showing the post.
+ * Where the tuning detail goes: under the post, outside what is faded or hidden with it, so that
+ * why a post was hidden can be seen without showing the post. Not in the post itself: X.com lays a
+ * post out as a row, and whatever is put in it lands beside its content, not under it.
  */
-export const tuningAnchor = (article: HTMLElement): HTMLElement => article;
+export function tuningAnchor(article: HTMLElement): HTMLElement {
+	const around = article.parentElement;
+	// X.com gives each post an element of its own around it. Where it did not, posts would share
+	// one detail between them: better beside the post than that.
+	return around && findPosts(around).length === 1 ? around : article;
+}

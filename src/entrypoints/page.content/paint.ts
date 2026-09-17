@@ -207,9 +207,16 @@ export function clearTuning(anchor: HTMLElement): void {
  * judgment came out, which unfolds into everything that went into them. Among many items the page
  * has to stay readable, so the whole of it shows only where it is asked for, and stays open there.
  */
-export function paintTuning(anchor: HTMLElement, tuning: Tuning, ground: Ground): void {
+export function paintTuning(
+	anchor: HTMLElement,
+	tuning: Tuning,
+	ground: Ground,
+	inset = '0'
+): void {
 	const root = shadowIn(anchor, 'tuning', tuningCss);
-	(root.host as HTMLElement).dataset.ground = ground;
+	const host = root.host as HTMLElement;
+	host.dataset.ground = ground;
+	host.style.setProperty('--inset', inset);
 	const wasOpen = root.querySelector<HTMLDetailsElement>('details.box')?.open ?? false;
 	root.querySelector('.box')?.remove();
 

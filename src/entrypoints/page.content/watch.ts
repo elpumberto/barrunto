@@ -149,7 +149,7 @@ export async function watchPage(ctx: ContentScriptContext, pack: Pack, page: Pag
 				'item' in outcome && outcome.analysis.analyzed
 					? tuningFor(rules, outcome.analysis.answers, outcome.item, sensitivity)
 					: { analyzed: false as const, reason: IN_WORDS[reason] ?? reason };
-			paintTuning(under, tuning, lit);
+			paintTuning(under, tuning, lit, page.tuningInset);
 		} catch (error) {
 			console.error('[barrunto] could not paint an item', error);
 		}

@@ -11,6 +11,8 @@ export const page: PageHalf<Post> = {
 	labelAnchor,
 	labelPlace,
 	tuningAnchor,
+	// In line with the post's words: past its padding, its author's picture and the gap after it.
+	tuningInset: '64px',
 	// Faded or hidden, it is everything X.com draws of the post. The labels hang from the box around it, and stay.
 	parts(article) {
 		const all = article.firstElementChild instanceof HTMLElement ? [article.firstElementChild] : [];
