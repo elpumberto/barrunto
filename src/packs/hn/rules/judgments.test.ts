@@ -65,6 +65,17 @@ describe('the recipes', () => {
 		expect(labels(comment(60), a, 'medium')).toEqual(['snark', 'tangent']);
 	});
 
+	// The next two are Jev's own answers for comments of a real thread, which the recipes got wrong.
+	it('takes a sneer for Snark from high, even when it argues its point', () => {
+		const a = answers({ attacks: 0.76, teaches: 0.53, meta: 0.28 });
+		expect(labels(comment(460), a, 'high')).toEqual(['snark']);
+	});
+
+	it('does not take having been there for Insight, not even on ultra', () => {
+		const a = answers({ firstHand: 0.96, concrete: 0.59, teaches: 0.26 });
+		expect(labels(comment(150), a, 'ultra')).toEqual([]);
+	});
+
 	it('stays quiet about an ordinary reply', () => {
 		const a = answers({ concrete: 0.5, firstHand: 0.45, teaches: 0.35 });
 		expect(labels(comment(250), a, 'high')).toEqual([]);

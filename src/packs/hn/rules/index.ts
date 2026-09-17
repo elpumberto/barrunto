@@ -7,17 +7,18 @@ import { traits } from './traits';
 /** No comment needs more than this to be judged, nor what surrounds it more than this to give it context. */
 const MOST_CHARACTERS = { comment: 4000, context: 1500 };
 
-/** The comment as Jev reads it, with what it hangs from. The questions point at these names. */
+/**
+ * The comment as Jev reads it, and what it hangs from next to it, not inside it: the questions
+ * point at these names, and what is inside `comment` is what is judged.
+ */
 function present({ text, story, parent }: Comment): Presented {
 	return {
 		story: {
 			title: story.title,
 			text: story.text.slice(0, MOST_CHARACTERS.context) || null
 		},
-		comment: {
-			text: text.slice(0, MOST_CHARACTERS.comment),
-			answers: parent && { text: parent.text.slice(0, MOST_CHARACTERS.context) }
-		}
+		parent: parent && { text: parent.text.slice(0, MOST_CHARACTERS.context) },
+		comment: { text: text.slice(0, MOST_CHARACTERS.comment) }
 	};
 }
 

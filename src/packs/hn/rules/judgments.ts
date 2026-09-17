@@ -3,17 +3,19 @@ import { labels } from './labels';
 
 /**
  * The same for every judgment: a strength means the same whichever recipe it comes from. They are
- * the X pack's as they stand, like the weights below: written by intent, yet to be tuned against real threads.
+ * the X pack's; the weights below have had a first tuning against real threads. A short jab that
+ * sneers, dismisses and jokes at once still comes out as strong as an outright insult.
  */
 const thresholds: Record<Sensitivity, number> = { low: 0.6, medium: 0.42, high: 0.3, ultra: 0.2 };
 
 const insight: Judgment = {
 	id: 'insight',
 	recipe: [
-		{ kind: 'trait', id: 'teaches', weight: 0.45 },
+		{ kind: 'trait', id: 'teaches', weight: 0.5 },
 		{ kind: 'trait', id: 'expertise', weight: 0.3 },
-		{ kind: 'trait', id: 'firstHand', weight: 0.2 },
-		{ kind: 'trait', id: 'concrete', weight: 0.15 },
+		// Having been there or naming names is not insight by itself: together they stay short of a label.
+		{ kind: 'trait', id: 'firstHand', weight: 0.12 },
+		{ kind: 'trait', id: 'concrete', weight: 0.08 },
 		{ kind: 'signal', id: 'length', weight: 0.1 },
 		{ kind: 'trait', id: 'dismissive', weight: -0.3 },
 		{ kind: 'trait', id: 'quip', weight: -0.3 },
@@ -27,7 +29,8 @@ const insight: Judgment = {
 const snark: Judgment = {
 	id: 'snark',
 	recipe: [
-		{ kind: 'trait', id: 'attacks', weight: 0.5 },
+		// Hostility alone is enough, as on X.com: a comment that argues and sneers is still a sneer.
+		{ kind: 'trait', id: 'attacks', weight: 0.7 },
 		{ kind: 'trait', id: 'dismissive', weight: 0.45 },
 		{ kind: 'trait', id: 'quip', weight: 0.2 },
 		{ kind: 'trait', id: 'teaches', weight: -0.3 }
