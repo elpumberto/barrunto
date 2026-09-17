@@ -1,7 +1,7 @@
 import { clears, contributions, signalValue, strength } from '@/engine';
-import type { Answers, Judgment, Post, Rules, Sensitivity } from '@/engine';
+import type { Answers, Item, Judgment, Rules, Sensitivity } from '@/engine';
 
-/** What the tuning detail shows for a post: everything that went into its judgments, or why nothing did. */
+/** What the tuning detail shows for an item: everything that went into its judgments, or why nothing did. */
 export type Tuning =
 	| { analyzed: false; reason: string }
 	| {
@@ -29,7 +29,7 @@ export interface TuningJudgment {
 export function tuningFor(
 	rules: Rules,
 	answers: Answers,
-	post: Post,
+	item: Item,
 	sensitivity: Sensitivity
 ): Tuning {
 	const nameOf = (id: string) =>
@@ -41,10 +41,10 @@ export function tuningFor(
 		doubt: rules.doubt,
 		inputs: [
 			...rules.traits.map((t) => ({ name: t.name, value: answers[t.id] ?? 0, isSignal: false })),
-			...rules.signals.map((s) => ({ name: s.name, value: signalValue(s, post), isSignal: true }))
+			...rules.signals.map((s) => ({ name: s.name, value: signalValue(s, item), isSignal: true }))
 		],
 		judgments: rules.judgments.map((judgment) => {
-			const contributed = contributions(judgment, rules, answers, post);
+			const contributed = contributions(judgment, rules, answers, item);
 			const total = strength(contributed);
 			return {
 				judgment,

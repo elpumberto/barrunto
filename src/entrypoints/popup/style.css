@@ -69,7 +69,7 @@ button {
 	display: flex;
 	align-items: center;
 	gap: 10px;
-	padding: 14px 16px;
+	padding: 10px 16px;
 	border-bottom: 1px solid var(--hairline);
 }
 
@@ -116,7 +116,7 @@ button {
 }
 
 .band {
-	padding: 10px 16px;
+	padding: 6px 16px;
 	border-bottom: 1px solid var(--hairline);
 	color: var(--warn);
 	font-size: 13px;
@@ -127,19 +127,12 @@ button {
 	flex-direction: column;
 	gap: 8px;
 	margin: 0;
-	padding: 14px 16px;
+	padding: 10px 16px;
 	border-bottom: 1px solid var(--hairline);
 }
 
 .row:last-child {
 	border-bottom: 0;
-}
-
-.row.inline {
-	flex-direction: row;
-	align-items: center;
-	justify-content: space-between;
-	gap: 12px;
 }
 
 .title {
@@ -223,53 +216,42 @@ button {
 	}
 }
 
+/* The sensitivity: four stops in one line, the chosen one filled. */
 .stops {
-	position: relative;
 	display: grid;
 	grid-template-columns: repeat(4, 1fr);
-	padding-top: 4px;
-}
-
-.stops::before {
-	content: '';
-	position: absolute;
-	top: 12px;
-	right: 12.5%;
-	left: 12.5%;
-	height: 2px;
-	background: var(--hairline);
+	border: 1px solid var(--hairline);
+	border-radius: 6px;
+	background: var(--ground);
+	overflow: hidden;
 }
 
 .stops button {
-	position: relative;
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 6px;
-	padding: 0;
+	padding: 5px 0;
 	border: 0;
+	border-left: 1px solid var(--hairline);
 	background: none;
 	color: var(--ink-2);
 	font-size: 13px;
 }
 
-.stops button::before {
-	content: '';
-	width: 16px;
-	height: 16px;
-	border: 2px solid var(--hairline);
-	border-radius: 50%;
-	background: var(--surface);
+.stops button:first-child {
+	border-left: 0;
 }
 
 .stops button[aria-pressed='true'] {
-	color: var(--ink);
+	background: var(--indigo);
+	color: var(--on-indigo);
 	font-weight: 700;
 }
 
-.stops button[aria-pressed='true']::before {
-	border-color: var(--indigo);
-	background: var(--indigo);
+.stops button:focus-visible {
+	outline-offset: -2px;
+}
+
+/* On the chosen stop the ring would be the colour of what it is drawn on. */
+.stops button[aria-pressed='true']:focus-visible {
+	outline-color: var(--on-indigo);
 }
 
 .counters {
@@ -284,6 +266,14 @@ button {
 	color: var(--ink-2);
 	font-weight: 400;
 	text-align: right;
+}
+
+.counters th:first-child {
+	text-align: left;
+}
+
+.counters th .link {
+	font-size: 13px;
 }
 
 .counters td {
@@ -304,7 +294,12 @@ button {
 	font: 13px var(--mono);
 }
 
-.key span {
+.key .title {
+	font-family: system-ui, sans-serif;
+	font-size: 14px;
+}
+
+.key .tail {
 	margin-right: auto;
 }
 
@@ -319,6 +314,224 @@ button {
 	text-decoration: underline;
 }
 
-.link.end {
-	align-self: flex-end;
+/* A row inside a row: a title and its help on one side, its switch on the other. */
+.inline {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+}
+
+/* A control under another in the same row. The rows of the catalogue are not that. */
+.row:not(.pack) > .inline {
+	padding-top: 6px;
+}
+
+.eyebrow {
+	color: var(--ink-2);
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+
+.warning {
+	color: var(--warn);
+	font-size: 13px;
+}
+
+/* A label as it hangs on a page, without the string or the tilt. */
+.chip {
+	display: inline-flex;
+	align-items: center;
+	justify-self: start;
+	gap: 4px;
+	padding: 2px 8px 2px 7px;
+	border-radius: 3px 3px 5px 5px;
+	background: var(--color);
+	color: var(--ink);
+	font-size: 11px;
+	font-weight: 800;
+	line-height: 16px;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+	white-space: nowrap;
+}
+
+.chip svg {
+	width: 11px;
+	height: 11px;
+	flex: none;
+}
+
+/* A part folded to one line: its title, what it holds in brief, and a mark that turns when it opens. */
+.fold summary {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 2px 0;
+	cursor: pointer;
+	list-style: none;
+}
+
+.fold summary::-webkit-details-marker {
+	display: none;
+}
+
+.fold summary::before {
+	content: '';
+	width: 6px;
+	height: 6px;
+	border-right: 2px solid var(--ink-2);
+	border-bottom: 2px solid var(--ink-2);
+	transform: rotate(-45deg);
+	transition: transform 0.15s;
+}
+
+.fold[open] summary::before {
+	transform: rotate(45deg);
+}
+
+.fold summary:focus-visible {
+	outline-offset: -2px;
+}
+
+.brief {
+	margin-left: auto;
+	color: var(--ink-2);
+	font-size: 13px;
+	font-variant-numeric: tabular-nums;
+}
+
+/* Open, the line above already says it. */
+.fold[open] .brief {
+	visibility: hidden;
+}
+
+.folded {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 8px 0 0 14px;
+}
+
+.foot {
+	display: flex;
+	justify-content: flex-end;
+	padding: 7px 16px;
+}
+
+.foot .link {
+	font-size: 13px;
+	text-decoration: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.fold summary::before {
+		transition: none;
+	}
+}
+
+/* The catalogue of packs: the way back, then a row per pack that unfolds what the pack is about. */
+.back {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 9px 16px;
+	border-bottom: 1px solid var(--hairline);
+}
+
+.back .link {
+	font-size: 13px;
+	text-decoration: none;
+}
+
+.more {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 1px;
+	padding: 0 0 0 14px;
+	border: 0;
+	background: none;
+	text-align: left;
+	position: relative;
+}
+
+.more::before {
+	content: '';
+	position: absolute;
+	top: 7px;
+	left: 0;
+	width: 6px;
+	height: 6px;
+	border-right: 2px solid var(--ink-2);
+	border-bottom: 2px solid var(--ink-2);
+	transform: rotate(-45deg);
+	transition: transform 0.15s;
+}
+
+.more[aria-expanded='true']::before {
+	transform: rotate(45deg);
+}
+
+.site {
+	color: var(--ink-2);
+	font: 12px var(--mono);
+}
+
+.pack p {
+	font-size: 13px;
+}
+
+.legend {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.legend li {
+	display: grid;
+	grid-template-columns: 88px 1fr;
+	/* What a label means often takes two lines: the label sits halfway down them, not on the first. */
+	align-items: center;
+	gap: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.more::before {
+		transition: none;
+	}
+}
+
+/* A small number, such as how many items are read ahead. */
+.field.count {
+	flex: none;
+	width: 58px;
+	padding: 4px 6px;
+	text-align: right;
+}
+
+label.title {
+	display: block;
+	cursor: pointer;
+}
+
+/* What is done to what a noise judgment labels: its label, and three stops. */
+.treatment .chip {
+	flex: none;
+}
+
+.stops.three {
+	grid-template-columns: repeat(3, 1fr);
+	width: 168px;
+}
+
+.stops.three button {
+	padding: 3px 0;
+	font-size: 12px;
 }

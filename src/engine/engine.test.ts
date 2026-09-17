@@ -1,31 +1,36 @@
 import { describe, expect, it } from 'vitest';
-import { clears, contributions, labelsFor, strength, strengthsFor } from '.';
-import type { Judgment, Post, Rules } from '.';
+import {
+	clears,
+	contributions,
+	labelledFrom,
+	labelsFor,
+	strength,
+	strengthsFor,
+	treatmentFor
+} from '.';
+import type { Item, Judgment, Rules } from '.';
 
-const post: Post = {
-	id: '1',
-	text: 'made up',
-	author: { name: 'Nobody', handle: '@nobody' },
-	metrics: { replies: 10, reposts: 0, likes: 0 },
-	hasMedia: false,
-	hasLink: false,
-	inThread: false,
-	isCutShort: false,
-	quoted: null
-};
+/** An item of a made-up pack: the engine knows nothing of what is in one. */
+interface Shout extends Item {
+	text: string;
+	replies: number;
+}
 
-const judgment = (id: string, recipe: Judgment['recipe']): Judgment => ({
+const post: Shout = { id: '1', text: 'made up', replies: 10 };
+
+const judgment = (id: string, recipe: Judgment['recipe'], noise = false): Judgment => ({
 	id,
 	recipe,
+	noise,
 	thresholds: { low: 0.75, medium: 0.6, high: 0.45, ultra: 0.3 },
 	label: { text: id, hint: '', glyph: '', color: '#000', ink: '#fff' }
 });
 
-const rules: Rules = {
+const rules: Rules<Shout> = {
 	doubt: 0,
 	present: (p) => p.text,
 	traits: [],
-	signals: [{ id: 'loud', name: 'loud', from: (p) => p.metrics.replies }],
+	signals: [{ id: 'loud', name: 'loud', from: (p) => p.replies }],
 	judgments: [
 		judgment('a', [
 			{ kind: 'trait', id: 'x', weight: 0.5 },
@@ -96,5 +101,39 @@ describe('labelsFor', () => {
 		expect(clears(rules.judgments[0]!, 0.3, 'ultra')).toBe(true);
 		expect(clears(rules.judgments[0]!, 0.29, 'ultra')).toBe(false);
 		expect(labelsFor(rules.judgments, { a: 0.75 }, 'low')).toHaveLength(1);
+	});
+});
+
+describe('labelledFrom', () => {
+	it('is the lowest sensitivity at which a strength gets the label, if any', () => {
+		const [judgment] = rules.judgments;
+		const { low, ultra } = judgment!.thresholds;
+		expect(labelledFrom(judgment!, low)).toBe('low');
+		expect(labelledFrom(judgment!, ultra)).toBe('ultra');
+		expect(labelledFrom(judgment!, ultra - 0.01)).toBeNull();
+	});
+});
+
+describe('what is done to an item', () => {
+	const [good, bad, worse] = [
+		judgment('good', []),
+		judgment('bad', [], true),
+		judgment('worse', [], true)
+	];
+	const asked = { bad: 'fade', worse: 'hide' } as const;
+
+	it('is the most the user asks for among its labels, hiding before fading', () => {
+		expect(treatmentFor([bad!], asked)).toBe('fade');
+		expect(treatmentFor([bad!, worse!], asked)).toBe('hide');
+		expect(treatmentFor([bad!], { bad: 'label' })).toBe('label');
+		// What the user has said nothing about is treated as it ships.
+		expect(treatmentFor([bad!], {})).toBe('fade');
+		expect(treatmentFor([], asked)).toBe('label');
+	});
+
+	it('takes the strictest when labels pull apart, and never heeds a judgment that is not noise', () => {
+		expect(treatmentFor([good!, worse!], asked)).toBe('hide');
+		expect(treatmentFor([good!, bad!], asked)).toBe('fade');
+		expect(treatmentFor([good!], { good: 'hide' })).toBe('label');
 	});
 });

@@ -1,4 +1,5 @@
-import type { Post, Presented, Rules } from '@/engine';
+import type { Presented, Rules } from '@/engine';
+import type { Post } from '../post';
 import { judgments } from './judgments';
 import { signals } from './signals';
 import { traits } from './traits';
@@ -12,7 +13,7 @@ function present(post: Post): Presented {
 	const { author, text, metrics, hasMedia, hasLink, inThread, isCutShort, quoted } = post;
 	return {
 		post: {
-			author: `${author.name} (${author.handle})`,
+			author: author.handle ? `${author.name} (${author.handle})` : author.name,
 			text: cut(text),
 			text_is_cut_short: isCutShort,
 			replies: metrics.replies,
@@ -29,4 +30,4 @@ function present(post: Post): Presented {
 /** Jev has to be this sure of a yes for a trait to count; see `Rules.doubt`. */
 const doubt = 0.4;
 
-export const rules: Rules = { present, doubt, traits, signals, judgments };
+export const rules: Rules<Post> = { present, doubt, traits, signals, judgments };

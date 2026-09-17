@@ -1,0 +1,125 @@
+:host {
+	--text: #536471;
+	--strong: #0f1419;
+	--track: #eff3f4;
+	display: block;
+	/* How far in is the pack's to say: in line with the item's words, wherever the page puts them. */
+	margin: 4px 16px 8px var(--inset, 0);
+}
+
+:host([data-ground='dark']) {
+	--text: #8b98a5;
+	--strong: #f7f9f9;
+	--track: #38444d;
+}
+
+.box {
+	color: var(--text);
+	font:
+		11px/1.5 ui-monospace,
+		Menlo,
+		Consolas,
+		monospace;
+}
+
+/* Folded, one quiet line: how each judgment came out. */
+.brief {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0 14px;
+	cursor: pointer;
+	list-style: none;
+	opacity: 0.8;
+}
+
+.logo {
+	display: flex;
+	margin-right: -6px;
+}
+
+.logo svg {
+	width: 12px;
+	height: 12px;
+}
+
+.brief::-webkit-details-marker {
+	display: none;
+}
+
+.brief::after {
+	content: '›';
+}
+
+.box[open] .brief::after {
+	content: '‹';
+}
+
+.brief:hover {
+	opacity: 1;
+}
+
+.brief .up {
+	color: var(--strong);
+	text-decoration: underline;
+	text-decoration-color: var(--color);
+	text-decoration-thickness: 2px;
+	text-underline-offset: 2px;
+}
+
+/* Unfolded, everything that went into them. */
+.whole {
+	display: grid;
+	gap: 8px;
+	margin-top: 4px;
+	padding: 8px 10px;
+	border: 1px dashed var(--text);
+	border-radius: 6px;
+}
+
+.traits {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+	gap: 2px 14px;
+}
+
+.row {
+	display: grid;
+	grid-template-columns: 96px 1fr 30px;
+	align-items: center;
+	gap: 6px;
+}
+
+.row.up {
+	color: var(--strong);
+}
+
+.bar {
+	position: relative;
+	height: 6px;
+	border-radius: 3px;
+	background: var(--track);
+}
+
+.fill {
+	position: absolute;
+	inset: 0 auto 0 0;
+	border-radius: 3px;
+	background: var(--color, var(--text));
+}
+
+.tick {
+	position: absolute;
+	top: -3px;
+	bottom: -3px;
+	width: 1px;
+	background: var(--strong);
+}
+
+.tick.current {
+	width: 2px;
+}
+
+.parts {
+	grid-column: 2 / 4;
+}

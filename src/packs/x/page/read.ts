@@ -1,15 +1,7 @@
-import type { Post } from '@/engine';
+import type { LabelPlace, Reading } from '@/engine';
+import type { Post } from '../post';
 import { parseCount } from './count';
 import { selectors } from './selectors';
-
-/** Why a post is not for analyzing. */
-export type Skipped = 'ad' | 'noText' | 'protectedAccount';
-
-/** A post as read, the reason it is not for analyzing, or nothing when the page is not understood. */
-export type Reading = { post: Post } | { skipped: Skipped } | null;
-
-/** Whether X.com is on its white ground or on one of its two dark ones. */
-export type Ground = 'light' | 'dark';
 
 export function findPosts(root: ParentNode): HTMLElement[] {
 	return [...root.querySelectorAll<HTMLElement>(selectors.post)];
@@ -47,7 +39,7 @@ function count(article: HTMLElement, selector: string): number {
 }
 
 /** Words as the reader sees them: emoji are images on X.com, with the character in their alt. */
-function visibleText(node: Element): string {
+export function visibleText(node: Element): string {
 	let text = '';
 	for (const child of node.childNodes) {
 		if (child instanceof HTMLImageElement) text += child.alt;
@@ -72,18 +64,18 @@ function authorIn(block: HTMLElement): { name: string; handle: string } {
 	return { name: parts.find((part) => part !== handle) ?? handle, handle };
 }
 
-export function readPost(article: HTMLElement): Reading {
+export function readPost(article: HTMLElement): Reading<Post> {
 	const id = postId(article);
 	const author = own<HTMLElement>(article, selectors.author);
 	// An ad shows the word "Ad" where a post shows its time, so it has no link of its own.
 	if (!id) return author ? { skipped: 'ad' } : null;
 	if (!author) return null;
 	// What someone shows only to their followers is not Barrunto's to send anywhere.
-	if (author.querySelector(selectors.protectedAccount)) return { skipped: 'protectedAccount' };
+	if (author.querySelector(selectors.protectedAccount)) return { skipped: 'protected account' };
 
 	const textNode = own<HTMLElement>(article, selectors.text);
 	const text = textNode ? visibleText(textNode).trim() : '';
-	if (!text) return { skipped: 'noText' };
+	if (!text) return { skipped: 'no text' };
 
 	const quotedPost = article.querySelector<HTMLElement>(selectors.quoted);
 	const quotedText = quotedPost?.querySelector(selectors.text);
@@ -91,7 +83,7 @@ export function readPost(article: HTMLElement): Reading {
 	const quotedIsProtected = quotedPost?.querySelector(selectors.protectedAccount) != null;
 
 	return {
-		post: {
+		item: {
 			id,
 			text,
 			author: authorIn(author),
@@ -117,22 +109,50 @@ export function readPost(article: HTMLElement): Reading {
 }
 
 /**
- * Where the label hangs: from the post itself, which is where X.com leaves room for it.
- * If X.com's layout changes, this and the offset in the label's styles are what move.
+ * Where the labels hang: from the line above the post. That line is the edge of the timeline's box,
+ * and the post starts a little under it, how far depending on what comes before. The post clips
+ * what sticks out of it, so the labels go in the box, not in the post. If X.com's layout changes,
+ * this and the pack's `labelPlace` are what move.
  */
-export const labelAnchor = (article: HTMLElement): HTMLElement => article;
+export const labelAnchor = (article: HTMLElement): HTMLElement =>
+	article.closest<HTMLElement>(selectors.cell) ?? article;
 
-/** Where the tuning detail goes: at the end of the post's content, under the row of buttons. */
-export function tuningAnchor(article: HTMLElement): HTMLElement {
-	return own<HTMLElement>(article, selectors.actions)?.parentElement ?? article;
+/** Clear of X.com's own two buttons in that corner: Grok's and the menu. */
+const FROM_THE_RIGHT = '84px';
+/** A box this short with nothing in it is a gap X.com leaves, after a module such as "Who to follow". */
+const GAP_AT_MOST = 24;
+/** Inside a gap, the line is an element this thin at most. */
+const LINE_AT_MOST = 2;
+
+/**
+ * The line above a post is, as a rule, the lower edge of the box right above, and the post's own box
+ * starts under it. But after a module X.com leaves an empty box as a gap, and draws the line inside
+ * it, with air on both sides: there the labels hang from wherever that line turns out to be.
+ */
+export function labelPlace(article: HTMLElement): Exclude<LabelPlace, 'inline'> {
+	const cell = article.closest(selectors.cell);
+	const above = cell?.previousElementSibling;
+	const hangsFromThePost = { top: '0', right: FROM_THE_RIGHT };
+	// What is above is nearly always a post: that is told by its words, without measuring anything.
+	if (!cell || !above || above.textContent?.trim()) return hangsFromThePost;
+	const height = above.getBoundingClientRect().height;
+	if (height <= 0 || height > GAP_AT_MOST) return hangsFromThePost;
+	const line = [...above.querySelectorAll('*')].find((inside) => {
+		const thickness = inside.getBoundingClientRect().height;
+		return thickness > 0 && thickness <= LINE_AT_MOST;
+	});
+	const from = (line ?? above).getBoundingClientRect().top - cell.getBoundingClientRect().top;
+	return { top: `${Math.round(from)}px`, right: FROM_THE_RIGHT };
 }
 
-/** Red, green and blue add up to 765 on white and to 0 on black; X.com's dim ground adds up to 96. */
-const HALF_BRIGHT = 382;
-
-export function ground(): Ground {
-	const [r = 255, g = 255, b = 255] = (
-		getComputedStyle(document.body).backgroundColor.match(/\d+/g) ?? []
-	).map(Number);
-	return r + g + b > HALF_BRIGHT ? 'light' : 'dark';
+/**
+ * Where the tuning detail goes: under the post, outside what is faded or hidden with it, so that
+ * why a post was hidden can be seen without showing the post. Not in the post itself: X.com lays a
+ * post out as a row, and whatever is put in it lands beside its content, not under it.
+ */
+export function tuningAnchor(article: HTMLElement): HTMLElement {
+	const around = article.parentElement;
+	// X.com gives each post an element of its own around it. Where it did not, posts would share
+	// one detail between them: better beside the post than that.
+	return around && findPosts(around).length === 1 ? around : article;
 }

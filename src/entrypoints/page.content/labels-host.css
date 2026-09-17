@@ -1,0 +1,30 @@
+:host {
+	position: absolute;
+	/* How far from the corner is the pack's to say: each page keeps its own things there. */
+	top: var(--top, 0);
+	right: var(--right, 0);
+	z-index: 1;
+	display: flex;
+	gap: 8px;
+	pointer-events: none;
+	font-family:
+		system-ui,
+		-apple-system,
+		'Segoe UI',
+		Roboto,
+		Helvetica,
+		Arial,
+		sans-serif;
+}
+
+/* In line at the end of their anchor, the labels take their place in the text and hang from nothing. */
+:host([data-place='inline']) {
+	position: static;
+	display: inline-flex;
+	margin-left: 8px;
+	vertical-align: middle;
+}
+
+:host([data-place='inline']) .string {
+	display: none;
+}

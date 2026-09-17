@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { labelsFor, strengthsFor } from '@/engine';
-import type { Post } from '@/engine';
+import type { Post } from '@/packs/x';
 import { rules } from '@/packs/x/rules';
 import { clearTuning, paintTuning } from './paint';
 import { tuningFor } from './tuning';
@@ -69,6 +69,33 @@ describe('paintTuning', () => {
 		expect((anchor.querySelector('[data-barrunto="tuning"]') as HTMLElement).dataset.ground).toBe(
 			'dark'
 		);
+	});
+
+	it('folds to one line with how each judgment came out, and stays unfolded where it was', () => {
+		paintTuning(anchor, tuningFor(rules, answers, post, 'high'), 'light');
+		const folded = box() as HTMLDetailsElement;
+		expect(folded.open).toBe(false);
+		expect(
+			[...folded.querySelectorAll('.brief span:not(.logo)')].map((span) => span.textContent)
+		).toEqual([
+			expect.stringMatching(/^○ Bait 0\.\d\d$/),
+			expect.stringMatching(/^● Flame 0\.\d\d$/),
+			expect.stringMatching(/^○ Signal 0\.\d\d$/)
+		]);
+
+		expect(folded.querySelector('.brief .logo svg')).not.toBeNull();
+
+		folded.open = true;
+		paintTuning(anchor, tuningFor(rules, answers, post, 'low'), 'light');
+		expect((box() as HTMLDetailsElement).open).toBe(true);
+	});
+
+	it('does not let a click on the detail reach the item', () => {
+		let reached = false;
+		anchor.addEventListener('click', () => (reached = true));
+		paintTuning(anchor, tuningFor(rules, answers, post, 'high'), 'light');
+		box().querySelector<HTMLElement>('.brief')!.click();
+		expect(reached).toBe(false);
 	});
 
 	it('replaces the detail that was there, and goes when cleared', () => {

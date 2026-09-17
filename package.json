@@ -1,11 +1,11 @@
 {
 	"name": "barrunto",
-	"description": "Reads posts on X.com as you browse, asks Jev about each one and hangs a label on it when it has something clear to say.",
-	"version": "1.0.0",
+	"description": "Reads what you browse, asks Jev about each thing and hangs a label on it when it has something clear to say. One rule pack per site.",
+	"version": "2.0.0",
 	"private": true,
 	"type": "module",
 	"engines": {
-		"node": ">=20"
+		"node": ">=22.12"
 	},
 	"scripts": {
 		"dev": "wxt",
@@ -13,6 +13,7 @@
 		"build:stand-in": "WXT_STAND_IN=1 wxt build",
 		"zip": "wxt zip",
 		"icons": "node scripts/cut-icons.js",
+		"notices": "node scripts/notices.js",
 		"test": "vitest run",
 		"smoke": "WXT_STAND_IN=1 wxt build && node scripts/smoke.js",
 		"check": "tsc --noEmit",

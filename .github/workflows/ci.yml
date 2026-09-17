@@ -2,12 +2,16 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
+
+permissions:
+  contents: read
 
 jobs:
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -18,4 +22,6 @@ jobs:
       - run: npm run check
       - run: npm run lint
       - run: npm test
+      # The whole path once, in the runner's own Chrome, with a stand-in for Jev.
+      - run: npm run smoke
       - run: npm run build

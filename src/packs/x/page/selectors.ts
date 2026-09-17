@@ -4,6 +4,8 @@
  */
 export const selectors = {
 	post: 'article[data-testid="tweet"]',
+	/** The box of the timeline a post sits in. The line between posts is its edge, not the post's. */
+	cell: '[data-testid="cellInnerDiv"]',
 	/** Links whose address carries a post's id. The post's own is the one around its time. */
 	permalink: 'a[href*="/status/"]',
 	time: 'time',
@@ -24,9 +26,20 @@ export const selectors = {
 	protectedAccount: '[data-testid="icon-lock"]',
 	media: '[data-testid="tweetPhoto"], [data-testid="videoPlayer"], [data-testid="videoComponent"]',
 	card: '[data-testid="card.wrapper"]',
-	/** The row of buttons under the post, and the three whose counts Barrunto reads. */
-	actions: 'div[role="group"]',
+	/** The three buttons under the post whose counts Barrunto reads. */
 	replies: '[data-testid="reply"]',
 	reposts: '[data-testid="retweet"], [data-testid="unretweet"]',
-	likes: '[data-testid="like"], [data-testid="unlike"]'
+	likes: '[data-testid="like"], [data-testid="unlike"]',
+	/** A box a post is written in: `tweetTextarea_0`, and `_1` onwards for the rest of a thread. */
+	draft: '[contenteditable="true"][data-testid^="tweetTextarea_"]',
+	/** What holds a box and its editor. */
+	draftLabel: '[data-testid^="tweetTextarea_"][data-testid$="_label"]',
+	/** A paragraph of the editor inside it. */
+	draftLine: '[data-block="true"]',
+	/** A picture of somebody: the user's own, before what they write. */
+	ownPicture: '[data-testid^="UserAvatar-Container-"]',
+	/** Images and video attached to what is being written. */
+	attached: '[data-testid="attachments"]',
+	/** The window a post is written in, when it is written in one and not at the top of the timeline. */
+	composer: '[role="dialog"]'
 };

@@ -20,19 +20,46 @@ describe('the borders between pieces', () => {
 		['src/packs/x/page/x.ts', "import { send } from '@/messages';"],
 		['src/jev/x.ts', "import { apiKey } from '@/storage';"],
 		['src/storage/x.ts', "import { jev } from '../jev';"],
-		['src/entrypoints/x.content/x.ts', "import type { Jev } from '@/jev/types';"],
-		['src/entrypoints/x.content/x.ts', "import { analyze } from '../background/analyze';"],
-		['src/entrypoints/x.content/x.ts', "import { settings } from '@/storage';"],
+		['src/entrypoints/page.content/x.ts', "import type { Jev } from '@/jev/types';"],
+		['src/entrypoints/page.content/x.ts', "import { analyze } from '../background/analyze';"],
+		['src/entrypoints/page.content/x.ts', "import { settings } from '@/storage';"],
+		['src/entrypoints/page.content/x.ts', "import { apiKey } from '../../storage/local';"],
+		['src/entrypoints/page.content/x.ts', "import { apiKey } from '../../storage';"],
+		['src/entrypoints/popup/x.ts', "import { TypeSafeClient } from '@typesafe-ai/sdk';"],
+		['src/engine/x.ts', "import { browser } from '@wxt-dev/browser';"],
+		['src/engine/x.ts', 'export const title = document.title;'],
+		['src/packs/x/rules/x.ts', 'export const width = window.innerWidth;'],
+		['src/packs/x/util/x.ts', "import { browser } from 'wxt/browser';"],
+		['src/packs/x/util/x.ts', "import { settings } from '@/storage';"],
+		['src/packs/index.ts', "import { page } from './hn/page';"],
+		['src/packs/hn/rules/x.ts', "import { rules } from '@/packs/x/rules';"],
+		['src/packs/hn/rules/x.ts', "import type { Post } from '../../x/post';"],
+		['src/packs/hn/x.ts', "import type { Post } from '../x/post';"],
 		['src/entrypoints/background/x.ts', "import { readPost } from '@/packs/x/page';"],
-		['src/entrypoints/popup/x.ts', "import { labelsFor } from '@/engine';"],
-		['src/entrypoints/popup/x.ts', "import { paintLabels } from '../x.content/paint';"]
-	])('%s may not: %s', async (file, code) => expect(await crossings(file, code)).toBe(1));
+		['src/entrypoints/popup/x.ts', "import { page } from '@/packs/x/page';"],
+		['src/entrypoints/popup/x.ts', "import { pages } from '@/packs/pages';"],
+		['src/packs/hn/rules/x.ts', "import { readComment } from '../page/read';"],
+		['src/packs/hn/x.ts', "import { page } from './page';"],
+		['src/packs/hn/page/x.ts', "import { apiKey } from '@/storage';"],
+		['src/entrypoints/popup/x.ts', "import { paintLabels } from '../page.content/paint';"]
+	])('%s may not: %s', async (file, code) =>
+		expect(await crossings(file, code)).toBeGreaterThan(0)
+	);
 
 	it.each([
 		['src/packs/x/rules/x.ts', "import type { Trait } from '@/engine';"],
-		['src/entrypoints/background/x.ts', "import { rules } from '@/packs/x/rules';"],
+		['src/entrypoints/background/x.ts', "import { packById } from '@/packs';"],
+		['src/entrypoints/page.content/x.ts', "import { pages } from '@/packs/pages';"],
+		['src/entrypoints/popup/x.ts', "import { packs } from '@/packs';"],
+		['src/packs/hn/page/x.ts', "import type { Comment } from '../comment';"],
+		['src/packs/hn/page/x.ts', "import { selectors } from './selectors';"],
+		['src/packs/hn/rules/x.ts', "import { labels } from './labels';"],
+		['src/packs/pages.ts', "import { page } from './hn/page';"],
+		['src/packs/hn/page/x.ts', 'export const title = document.title;'],
+		['src/entrypoints/page.content/x.ts', "import { connection } from '../../storage/session';"],
+		['src/jev/x.ts', "import { TypeSafeClient } from '@typesafe-ai/sdk';"],
 		['src/entrypoints/popup/x.ts', "import type { Settings } from '@/storage/types';"],
-		['src/entrypoints/x.content/x.ts', "import { send } from '@/messages';"],
-		['src/entrypoints/x.content/x.ts', "import { connection } from '@/storage/session';"]
+		['src/entrypoints/page.content/x.ts', "import { send } from '@/messages';"],
+		['src/entrypoints/page.content/x.ts', "import { connection } from '@/storage/session';"]
 	])('%s may: %s', async (file, code) => expect(await crossings(file, code)).toBe(0));
 });

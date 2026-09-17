@@ -11,3 +11,23 @@ Thumbs.db
 # Env
 .env
 .env.*
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*~
+
+# Logs, archives, scratch
+*.log
+*.zip
+*.tgz
+/tmp/
+/scratch/
+
+# Saved pages and captures
+*.mhtml
+*_files/
+/*.png
+/*.jpg
+/*.webm

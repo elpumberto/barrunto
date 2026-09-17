@@ -3,4 +3,4 @@ node_modules
 .wxt
 package-lock.json
 *.md
-src/packs/x/page/samples/*.html
+src/packs/*/page/samples/*.html

@@ -23,11 +23,16 @@ function failureOf(error: unknown): JevFailure {
 	return 'serviceDown';
 }
 
-/** A request Jev could not make sense of is a fault of Barrunto's, and worth seeing. Never the body: it may echo a post. */
+/**
+ * A request Jev could not make sense of is a fault of Barrunto's, and worth seeing. Never the body:
+ * it may echo a post. Everything else is no fault of the code: a key turned down, too many calls,
+ * a network that drops or Jev failing. The popup tells of those, and Chrome would list them among
+ * the extension's errors, where they read as the extension being broken.
+ */
 function report(error: unknown): void {
-	if (error instanceof APIError && error.status >= 500) return;
-	const status = error instanceof APIError ? error.status : '';
-	console.error('[barrunto] Jev:', status, error instanceof Error ? error.message : error);
+	if (!(error instanceof APIError) || error instanceof APIConnectionError) return;
+	if (error.status >= 500 || failureOf(error) !== 'serviceDown') return;
+	console.error('[barrunto] Jev:', error.status, error.message);
 }
 
 /** Jev through TypeSafe's SDK. `config` is for the tests, which bring their own `fetch`. */

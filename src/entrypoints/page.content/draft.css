@@ -1,0 +1,92 @@
+:host {
+	--text: #536471;
+	--strong: #0f1419;
+	--track: #eff3f4;
+	display: block;
+	margin: 6px 0 4px;
+}
+
+:host([data-ground='dark']) {
+	--text: #8b98a5;
+	--strong: #f7f9f9;
+	--track: #38444d;
+}
+
+/* The words have changed since: what is said here is about what was written before. */
+:host([data-stale]) .hunch {
+	opacity: 0.45;
+}
+
+.hunch {
+	display: grid;
+	gap: 4px;
+	color: var(--text);
+	font:
+		12px/1.4 system-ui,
+		-apple-system,
+		'Segoe UI',
+		Roboto,
+		sans-serif;
+	transition: opacity 0.2s;
+}
+
+.said {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.said > svg {
+	width: 12px;
+	height: 12px;
+	flex: none;
+}
+
+/* A label as readers may get it, how strong the hunch is, and from which sensitivity they get it. */
+.row {
+	display: grid;
+	grid-template-columns: 72px minmax(60px, 160px) auto;
+	align-items: center;
+	justify-content: start;
+	gap: 10px;
+}
+
+/* Too faint for the user's own sensitivity: readers who ask for more would still get it. */
+.row:not(.up) .label {
+	opacity: 0.5;
+}
+
+.row.up {
+	color: var(--strong);
+}
+
+/* Nothing to hang from here. */
+.string {
+	display: none;
+}
+
+.bar {
+	position: relative;
+	height: 6px;
+	border-radius: 3px;
+	background: var(--track);
+}
+
+.fill {
+	position: absolute;
+	inset: 0 auto 0 0;
+	border-radius: 3px;
+	background: var(--color, var(--text));
+}
+
+.tick {
+	position: absolute;
+	top: -3px;
+	bottom: -3px;
+	width: 1px;
+	background: var(--strong);
+}
+
+.tick.current {
+	width: 2px;
+}

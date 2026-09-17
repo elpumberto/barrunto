@@ -15,7 +15,8 @@ const bait: Judgment = {
 		{ kind: 'trait', id: 'teaches', weight: -0.3 }
 	],
 	thresholds,
-	label: labels.bait
+	label: labels.bait,
+	noise: true
 };
 
 const flame: Judgment = {
@@ -25,7 +26,8 @@ const flame: Judgment = {
 		{ kind: 'signal', id: 'replyRatio', weight: 0.35 }
 	],
 	thresholds,
-	label: labels.flame
+	label: labels.flame,
+	noise: true
 };
 
 const signal: Judgment = {
@@ -41,7 +43,8 @@ const signal: Judgment = {
 		{ kind: 'trait', id: 'asksReaction', weight: -0.25 }
 	],
 	thresholds,
-	label: labels.signal
+	label: labels.signal,
+	noise: false
 };
 
 /** In the order their labels hang. */
