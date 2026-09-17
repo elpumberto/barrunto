@@ -26,8 +26,7 @@ export const selectors = {
 	protectedAccount: '[data-testid="icon-lock"]',
 	media: '[data-testid="tweetPhoto"], [data-testid="videoPlayer"], [data-testid="videoComponent"]',
 	card: '[data-testid="card.wrapper"]',
-	/** The row of buttons under the post, and the three whose counts Barrunto reads. */
-	actions: 'div[role="group"]',
+	/** The three buttons under the post whose counts Barrunto reads. */
 	replies: '[data-testid="reply"]',
 	reposts: '[data-testid="retweet"], [data-testid="unretweet"]',
 	likes: '[data-testid="like"], [data-testid="unlike"]'

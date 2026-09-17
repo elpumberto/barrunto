@@ -9,7 +9,8 @@
 	cursor: help;
 }
 
-.label:nth-child(even) {
+/* Every other label, whatever else shares its place. */
+.label:nth-of-type(even) {
 	transform: rotate(2.5deg);
 }
 

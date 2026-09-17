@@ -91,6 +91,7 @@ try {
 		await popup.click('[data-action="home"]');
 	};
 	await turnOn('x');
+	await popup.click('[data-action="tuning"]');
 
 	/** How many items Barrunto reads ahead of the user, set in the popup. */
 	const readAhead = async (items) => {
@@ -136,13 +137,19 @@ try {
 
 	// The posts on screen dwell, get analyzed and are counted; the ones below are left alone.
 	// (A tab that is not in front is told nothing about what is on screen, so the page stays in front.)
-	// The place for the labels is there from the asking, with a mark that Jev is being asked; it is
-	// looked at once the mark is gone.
-	const looked = () =>
-		[...document.querySelectorAll('article > [data-barrunto="labels"]')].filter(
-			(host) => !host.shadowRoot.querySelector('.waiting')
+	// With tuning mode on, every item that has been looked at gets its line, labelled or not: that is
+	// how the items looked at are counted.
+	const looked = (items) =>
+		[...document.querySelectorAll(`${items} > [data-barrunto="tuning"]`)].filter((host) =>
+			host.shadowRoot.querySelector('.box')
 		).length;
-	await page.waitForFunction(`(${looked})() === ${ON_SCREEN}`, { timeout: 15000 });
+	const waitForLooked = async (items, count) => {
+		await page
+			.waitForFunction(`(${looked})(${JSON.stringify(items)}) === ${count}`, { timeout: 15000 })
+			.catch(() => {});
+		assert.equal(await page.evaluate(looked, items), count, `${count} of ${items} are looked at`);
+	};
+	await waitForLooked('article', ON_SCREEN);
 	await popup.bringToFront();
 	const analyzed = () =>
 		popup.$eval('.counters tr:nth-child(2) td:nth-child(2)', (el) => Number(el.textContent));
@@ -184,12 +191,7 @@ try {
 		real.click('[data-action="sensitivity"][data-value="ultra"]')
 	);
 	await page.bringToFront();
-	await page.waitForFunction(
-		`(${looked.toString().replace('article >', '.comhead >')})() === ${IN_SIGHT + AHEAD}`,
-		{
-			timeout: 15000
-		}
-	);
+	await waitForLooked('td.default', IN_SIGHT + AHEAD);
 	const onThread = await labelsOnPage(page, 'tr.comtr', '.comhead >');
 	console.log('labels per comment on ultra:', JSON.stringify(onThread));
 	assert.ok(

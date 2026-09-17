@@ -18,7 +18,7 @@ import { tuningFor } from './tuning';
 
 /** How much of an item has to show, or of the screen it has to fill when it is taller than the screen. */
 const IN_VIEW = 0.5;
-/** A page changes in bursts: the items are gone over once the burst settles. */
+/** A page changes in bursts: the items are gone over this long after one starts, and no more often. */
 const SETTLE_MS = 150;
 /** How many analyzed items a tab remembers, for when the page draws them again on scrolling back. */
 const ITEMS_REMEMBERED = 500;
@@ -55,7 +55,12 @@ interface Tracked {
 	waitingFor?: Item;
 	urgent?: boolean;
 	outcome?: Outcome;
+	/** Where its labels go, which may be outside the element and so outlive it. */
+	anchor: HTMLElement;
 }
+
+/** What Barrunto puts in the page carries this, whatever it is. */
+const OURS = 'data-barrunto';
 
 /** Whether the page draws the element at all: a comment folded away with its thread is there, and is not. */
 const drawn = (element: HTMLElement) => element.checkVisibility?.() ?? true;
@@ -88,6 +93,10 @@ export async function watchPage(ctx: ContentScriptContext, pack: Pack, page: Pag
 	/** The items the browser is told about, and the ones of them that show on screen, however little. */
 	const watched = new Set<HTMLElement>();
 	const inSight = new Set<HTMLElement>();
+	/** The ones that show enough of themselves to be read, when nothing is read ahead. */
+	const inView = new Set<HTMLElement>();
+	/** The items on the page as of the last time it was gone over, in the page's order. */
+	let items: HTMLElement[] = [];
 
 	let connectionStatus = await connectionNow();
 	let currentSettings: Settings = await pageSettings.getValue();
@@ -111,18 +120,23 @@ export async function watchPage(ctx: ContentScriptContext, pack: Pack, page: Pag
 			const labels = analysis?.analyzed
 				? labelsFor(rules.judgments, analysis.strengths, sensitivity)
 				: [];
-			paintLabels(page.labelAnchor(article), labels, placeOf(article), arrive);
+			// Read off the page once, before anything is written to it.
+			const anchor = page.labelAnchor(article);
+			const place = placeOf(article);
+			const parts = page.parts(article);
+			const lit = ground();
+			paintLabels(anchor, labels, place, arrive);
 			page.act?.(article, labels, options);
 
 			const id = 'item' in outcome ? outcome.item.id : null;
-			const parts = page.parts(article);
-			const anchor = page.labelAnchor(article);
 			paintTreatment(parts, id && revealed.has(id) ? 'label' : treatmentFor(labels, treatments), {
 				// Labels that go with what is hidden are named in the line; the ones that stay hang over it.
 				named: parts.hidden.some((part) => part.contains(anchor)) ? labels : [],
-				roomy: placeOf(article) !== 'inline',
-				ground: ground(),
+				roomy: place !== 'inline',
+				ground: lit,
 				show() {
+					// The page may have given the element to another item since the line was drawn.
+					if (tracked.get(article)?.outcome !== outcome) return;
 					if (id) revealed.add(id);
 					paint(article, outcome, false);
 				}
@@ -135,28 +149,29 @@ export async function watchPage(ctx: ContentScriptContext, pack: Pack, page: Pag
 				'item' in outcome && outcome.analysis.analyzed
 					? tuningFor(rules, outcome.analysis.answers, outcome.item, sensitivity)
 					: { analyzed: false as const, reason: IN_WORDS[reason] ?? reason };
-			paintTuning(under, tuning, ground());
+			paintTuning(under, tuning, lit);
 		} catch (error) {
-			console.error('[barrunto] could not paint a post', error);
+			console.error('[barrunto] could not paint an item', error);
 		}
 	}
 
+	/** Takes away whatever Barrunto did to an item's element, this copy of the script or one before it. */
 	function unpaint(article: HTMLElement) {
 		try {
-			paintLabels(page.labelAnchor(article), [], placeOf(article), false);
+			clearLabels(page.labelAnchor(article));
 			page.act?.(article, [], chosen().options);
 			const none = { named: [], roomy: false, ground: ground(), show() {} };
 			paintTreatment(page.parts(article), 'label', none);
 			clearTuning(page.tuningAnchor(article));
 		} catch (error) {
-			console.error('[barrunto] could not clear a post', error);
+			console.error('[barrunto] could not clear an item', error);
 		}
 	}
 
 	/** Has an item analyzed, once. `urgent`: it is in front of the user, and not being read ahead of them. */
 	async function look(article: HTMLElement, urgent: boolean) {
 		const known = tracked.get(article);
-		if (!known || !reading() || ctx.isInvalid) return;
+		if (!known || !reading() || ctx.isInvalid || !article.isConnected) return;
 		if (known.asked) {
 			// The user has caught up with an item read ahead whose answer is still on its way: it goes first now.
 			if (urgent && known.waitingFor && !known.urgent) {
@@ -211,12 +226,29 @@ export async function watchPage(ctx: ContentScriptContext, pack: Pack, page: Pag
 	 */
 	function readAhead() {
 		const ahead = currentSettings.lookAhead;
-		if (!ahead || !reading()) return;
-		const items = page.find(document).filter(drawn);
-		const last = items.findLastIndex((item) => inSight.has(item));
-		if (last < 0) return;
-		for (const item of items) if (inSight.has(item)) void look(item, true);
-		for (const item of items.slice(last + 1, last + 1 + ahead)) void look(item, false);
+		if (!ahead || !reading() || !inSight.size) return;
+		for (const item of inSight) void look(item, true);
+
+		let last = items.length - 1;
+		while (last >= 0 && !inSight.has(items[last]!)) last--;
+		// Only as many as are read ahead are asked whether they are drawn: a thread can hold a thousand.
+		for (let next = last + 1, read = 0; last >= 0 && next < items.length && read < ahead; next++) {
+			if (!drawn(items[next]!)) continue;
+			read++;
+			void look(items[next]!, false);
+		}
+	}
+
+	/** With nothing read ahead, an item is read once it has stayed in view for a moment. */
+	function dwell(article: HTMLElement) {
+		if (dwelling.has(article) || tracked.get(article)?.asked) return;
+		dwelling.set(
+			article,
+			window.setTimeout(() => {
+				dwelling.delete(article);
+				void look(article, true);
+			}, page.dwellMs)
+		);
 	}
 
 	const onScreen = new IntersectionObserver(
@@ -226,40 +258,35 @@ export async function watchPage(ctx: ContentScriptContext, pack: Pack, page: Pag
 				if (intersectionRatio > 0) inSight.add(article);
 				else inSight.delete(article);
 
-				window.clearTimeout(dwelling.get(article));
-				dwelling.delete(article);
-				if (currentSettings.lookAhead || tracked.get(article)?.asked) continue;
-
 				// An item taller than the screen never shows half of itself: filling half the screen does.
 				const fillsScreen = intersectionRect.height >= (rootBounds?.height ?? Infinity) * IN_VIEW;
-				if (intersectionRatio < IN_VIEW && !fillsScreen) continue;
-				dwelling.set(
-					article,
-					window.setTimeout(() => {
-						dwelling.delete(article);
-						void look(article, true);
-					}, page.dwellMs)
-				);
+				if (intersectionRatio >= IN_VIEW || fillsScreen) inView.add(article);
+				else inView.delete(article);
+
+				window.clearTimeout(dwelling.get(article));
+				dwelling.delete(article);
+				if (!currentSettings.lookAhead && inView.has(article)) dwell(article);
 			}
 			readAhead();
 		},
 		{ threshold: [0, 0.1, 0.25, IN_VIEW] }
 	);
 
-	/** Goes over the items on the page: paints the ones already known, waits for the rest to dwell. */
+	/** Goes over the items on the page: paints the ones already known, and has the rest watched. */
 	function scan() {
 		// Reloading the extension leaves this script running in the open page, cut off from the rest:
 		// asking whether it still holds is what makes it let go of the page.
 		if (ctx.isInvalid) return;
-		for (const article of page.find(document)) {
+		items = page.find(document);
+		for (const article of items) {
 			const id = page.idOf(article);
 			let mine = tracked.get(article);
 			if (!mine || mine.id !== id) {
-				if (mine) unpaint(article);
-				// A new element may sit where another was: labels kept outside that one would outlive it.
-				else clearLabels(page.labelAnchor(article));
+				// Whatever is there is another item's: this element's before, or, on an element never
+				// seen, what an earlier copy of this script left, or labels kept outside an element gone.
+				unpaint(article);
 				const outcome = id ? remembered.get(id) : undefined;
-				mine = { id, asked: outcome !== undefined, outcome };
+				mine = { id, asked: outcome !== undefined, outcome, anchor: page.labelAnchor(article) };
 				tracked.set(article, mine);
 				if (outcome) paint(article, outcome, false);
 			}
@@ -267,20 +294,26 @@ export async function watchPage(ctx: ContentScriptContext, pack: Pack, page: Pag
 				watched.add(article);
 				onScreen.observe(article);
 			}
+			// An item that could not be read when it came into view, such as a folded comment, is not
+			// told about again while it stays there: it is given its moment once it can be.
+			if (reading() && !currentSettings.lookAhead && inView.has(article)) dwell(article);
 		}
 		// The browser is told about every item, asked about or not, to know which is the last in
-		// sight; the ones the page has taken away are let go of.
+		// sight; the ones the page has taken away are let go of, and so is what they left outside them.
 		for (const article of watched) {
 			if (article.isConnected) continue;
 			watched.delete(article);
 			inSight.delete(article);
+			inView.delete(article);
 			onScreen.unobserve(article);
+			const anchor = tracked.get(article)?.anchor;
+			if (anchor?.isConnected && !page.find(anchor).length) clearLabels(anchor);
 		}
 		readAhead();
 	}
 
 	function repaint() {
-		for (const article of page.find(document)) {
+		for (const article of items) {
 			const outcome = tracked.get(article)?.outcome;
 			if (outcome) paint(article, outcome, true);
 		}
@@ -288,7 +321,7 @@ export async function watchPage(ctx: ContentScriptContext, pack: Pack, page: Pag
 
 	/** An item that could not be analyzed gets another chance when Barrunto starts reading again. */
 	function forgetFailures() {
-		for (const article of page.find(document)) {
+		for (const article of items) {
 			const mine = tracked.get(article);
 			if (!mine?.outcome || 'skipped' in mine.outcome || analyzed(mine.outcome)) continue;
 			mine.asked = false;
@@ -296,44 +329,70 @@ export async function watchPage(ctx: ContentScriptContext, pack: Pack, page: Pag
 		}
 	}
 
+	/** What Barrunto itself puts in the page and takes out of it is no reason to go over the page again. */
+	const isOurs = (node: Node) => node instanceof Element && node.hasAttribute(OURS);
 	let settling = 0;
-	const changes = new MutationObserver(() => {
+	const changes = new MutationObserver((records) => {
 		if (settling) return;
+		if (records.every((r) => [...r.addedNodes, ...r.removedNodes].every(isOurs))) return;
 		settling = window.setTimeout(() => {
 			settling = 0;
 			scan();
 		}, SETTLE_MS);
 	});
 
+	function letGo() {
+		changes.disconnect();
+		onScreen.disconnect();
+		watched.clear();
+		inSight.clear();
+		inView.clear();
+		window.clearTimeout(settling);
+		settling = 0;
+		for (const timer of dwelling.values()) window.clearTimeout(timer);
+		dwelling.clear();
+	}
+
+	/** Has the browser tell again what is on screen, for the items that are owed another look. */
+	function lookAgain() {
+		if (!reading()) return;
+		onScreen.disconnect();
+		watched.clear();
+		inSight.clear();
+		inView.clear();
+		scan();
+	}
+
 	/** Watches while Barrunto is reading; when it is not, it lets go of the page and leaves what is painted. */
 	let wasReading = false;
 	function startOrStop() {
 		if (reading() === wasReading) return;
 		wasReading = reading();
-		if (wasReading) {
-			forgetFailures();
-			changes.observe(document.body, { childList: true, subtree: true });
-			scan();
-		} else {
-			changes.disconnect();
-			onScreen.disconnect();
-			watched.clear();
-			inSight.clear();
-			for (const timer of dwelling.values()) window.clearTimeout(timer);
-			dwelling.clear();
-		}
+		if (!wasReading) return letGo();
+		forgetFailures();
+		changes.observe(document.body, { childList: true, subtree: true });
+		scan();
 	}
 
 	const unwatch = [
 		pageSettings.watch((next) => {
+			const waitsAgain = currentSettings.lookAhead > 0 && next.lookAhead === 0;
 			currentSettings = next;
 			startOrStop();
 			repaint();
-			readAhead();
+			// Items passed over while reading ahead now have to dwell, and nothing has told of them since.
+			if (waitsAgain) lookAgain();
+			else readAhead();
 		}),
 		connection.watch((next) => {
+			const recovered = connectionStatus.state === 'trouble' && next.state === 'connected';
 			connectionStatus = next;
 			startOrStop();
+			// What failed while Jev was in trouble gets another chance now, not only after a pause.
+			if (recovered) {
+				forgetFailures();
+				lookAgain();
+			}
 		})
 	];
 	ctx.onInvalidated(() => {
@@ -345,8 +404,7 @@ export async function watchPage(ctx: ContentScriptContext, pack: Pack, page: Pag
 				// Nothing left to let go of.
 			}
 		}
-		changes.disconnect();
-		onScreen.disconnect();
+		letGo();
 	});
 
 	startOrStop();

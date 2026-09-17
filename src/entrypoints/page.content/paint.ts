@@ -86,6 +86,8 @@ export function paintLabels(
 	place: LabelPlace,
 	arrive = true
 ): void {
+	// Nothing to hang, nothing to hang it from: a page of items with no labels stays as it was.
+	if (!judgments.length) return clearLabels(anchor);
 	const root = labelsRoot(anchor, place);
 	root.querySelector('.waiting')?.remove();
 
@@ -104,8 +106,8 @@ export function clearLabels(anchor: HTMLElement): void {
 }
 
 /**
- * Says, where the labels go, that Jev is being asked about this item: the user got here before the
- * answer did. It goes as soon as the labels are painted, even if there are none.
+ * Says, where the labels go, that Jev is being asked about this item, for whoever gets to it before
+ * the answer does. It goes as soon as the labels are painted, even if there are none.
  */
 export function paintWaiting(anchor: HTMLElement, place: LabelPlace): void {
 	const root = labelsRoot(anchor, place);
@@ -120,6 +122,8 @@ export function paintWaiting(anchor: HTMLElement, place: LabelPlace): void {
 
 /** How much of itself a faded item keeps. */
 const FADED = '0.45';
+/** Marks a part of the page that Barrunto has faded or hidden. */
+const TREATED = 'data-barrunto-treated';
 
 /**
  * Does to the item what the user asked for what it was labelled: nothing more, fading it, or hiding
@@ -134,8 +138,18 @@ export function paintTreatment(
 	line: { named: Judgment[]; roomy: boolean; ground: Ground; show(): void }
 ): void {
 	const parent = parts.hidden[0]?.parentElement;
-	for (const part of parts.faded) part.style.opacity = treatment === 'fade' ? FADED : '';
-	for (const part of parts.hidden) part.style.display = treatment === 'hide' ? 'none' : '';
+	// Only what Barrunto did is undone: a part it never touched keeps whatever the page gave it. The
+	// mark is on the page, so that a later copy of this script can undo what an earlier one did.
+	const set = (part: HTMLElement, property: 'opacity' | 'display', value: string) => {
+		if (!value && !part.hasAttribute(TREATED)) return;
+		part.style[property] = value;
+		part.setAttribute(TREATED, '');
+	};
+	for (const part of parts.faded) set(part, 'opacity', treatment === 'fade' ? FADED : '');
+	for (const part of parts.hidden) set(part, 'display', treatment === 'hide' ? 'none' : '');
+	if (treatment === 'label') {
+		for (const part of [...parts.faded, ...parts.hidden]) part.removeAttribute(TREATED);
+	}
 	if (!parent) return;
 	if (treatment !== 'hide') {
 		parent.querySelector(`:scope > [${MARK}="fold"]`)?.remove();

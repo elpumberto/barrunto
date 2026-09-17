@@ -92,9 +92,12 @@ export const labelAnchor = (row: HTMLElement): HTMLElement =>
 	row.querySelector<HTMLElement>(selectors.body) ??
 	row;
 
-/** Where the tuning detail goes: at the end of the comment, under its reply link. */
+/**
+ * Where the tuning detail goes: at the end of the comment's cell, outside what is faded or hidden
+ * with it, so that why a comment was hidden can be seen without showing the comment.
+ */
 export const tuningAnchor = (row: HTMLElement): HTMLElement =>
-	row.querySelector<HTMLElement>(selectors.content) ?? row;
+	row.querySelector<HTMLElement>(selectors.body) ?? row;
 
 /**
  * Faded, a comment loses its words and keeps its header, labels and all. Hidden, it loses everything

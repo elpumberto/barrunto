@@ -5,15 +5,11 @@ import { pages } from '@/packs/pages';
 import { watchPage } from './watch';
 
 export default defineContentScript({
-	// No sites of its own: the background has it run on the sites of the packs that are on.
+	// No sites of its own: the background has it run on the sites of the packs that are on, and hands
+	// it to the pages already open. Handed over twice, the newest copy is the one that carries on:
+	// WXT has the older one let go of the page, and what that one painted is cleared as it is met.
 	registration: 'runtime',
 	main(ctx) {
-		// A page already open when its pack is turned on is handed the script by the background, and a
-		// pack turned off and on again would hand it over twice: the one already there carries on.
-		const world = globalThis as { barruntoIsHere?: boolean };
-		if (world.barruntoIsHere) return;
-		world.barruntoIsHere = true;
-
 		const pack = packs.find(({ sites }) =>
 			sites.some((site) => new MatchPattern(site).includes(location.href))
 		);

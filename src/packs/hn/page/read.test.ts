@@ -94,10 +94,12 @@ describe('readComment, on samples of the real page', () => {
 		expect(readComment(findComments(document)[0]!)).toBeNull();
 	});
 
-	it('puts the labels at the end of the header and the tuning detail at the end of the comment', () => {
+	it('puts the labels at the end of the header, and the tuning detail outside what is faded or hidden', () => {
 		const row = open('thread')('1001');
 		expect(labelAnchor(row).className).toBe('comhead');
-		expect(tuningAnchor(row).className).toBe('comment');
+		expect(tuningAnchor(row).className).toBe('default');
+		const { faded, hidden } = commentParts(row);
+		expect([...faded, ...hidden]).not.toContain(tuningAnchor(row));
 	});
 
 	it('fades the words of a comment and hides all of it, header too, but not what Barrunto put there', () => {

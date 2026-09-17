@@ -234,6 +234,67 @@ describe('watching the page', () => {
 		expect(labelsOn(second!)).toEqual(['flame']);
 	});
 
+	it('gives what failed while Jev was in trouble another chance once it is back', async () => {
+		vi.mocked(send).mockResolvedValueOnce({ analyzed: false, reason: 'noNetwork' });
+		const article = addPost('30');
+		await watchPage(ctx);
+		OnScreen.last.show(article, 1);
+		await vi.advanceTimersByTimeAsync(DWELL);
+		expect(send).toHaveBeenCalledTimes(1);
+
+		vi.mocked(send).mockResolvedValue(strengths(0.9));
+		await connection.setValue({ state: 'trouble', reason: 'noNetwork' });
+		await settle();
+		await connection.setValue({ state: 'connected' });
+		await settle();
+		OnScreen.last.show(article, 1);
+		await vi.advanceTimersByTimeAsync(DWELL);
+		expect(send).toHaveBeenCalledTimes(2);
+		expect(labelsOn(article)).toEqual(['flame']);
+	});
+
+	it('clears what an earlier copy of itself left on the page, as it meets it', async () => {
+		const article = addPost('31');
+		const body = article.firstElementChild as HTMLElement;
+		body.style.display = 'none';
+		body.setAttribute('data-barrunto-treated', '');
+		const leftover = document.createElement('div');
+		leftover.setAttribute('data-barrunto', 'fold');
+		article.append(leftover);
+
+		await watchPage(ctx);
+		expect(body.style.display).toBe('');
+		expect(article.querySelector('[data-barrunto="fold"]')).toBeNull();
+	});
+
+	it("leaves alone a style of the page's own that it never touched", async () => {
+		vi.mocked(send).mockResolvedValue(strengths(0));
+		const article = addPost('32');
+		(article.firstElementChild as HTMLElement).style.opacity = '0.9';
+		await watchPage(ctx);
+		OnScreen.last.show(article, 1);
+		await vi.advanceTimersByTimeAsync(DWELL);
+		expect(send).toHaveBeenCalledTimes(1);
+		expect((article.firstElementChild as HTMLElement).style.opacity).toBe('0.9');
+	});
+
+	it('reads, once it can be read, an item that could not be when it came into view', async () => {
+		vi.mocked(send).mockResolvedValue(strengths(0.9));
+		const article = addPost('33');
+		const text = article.querySelector('[data-testid="User-Name"]')!;
+		const parent = text.parentElement!;
+		text.remove();
+		await watchPage(ctx);
+		OnScreen.last.show(article, 1);
+		await vi.advanceTimersByTimeAsync(DWELL);
+		expect(send).not.toHaveBeenCalled();
+
+		parent.prepend(text);
+		await settle();
+		await vi.advanceTimersByTimeAsync(DWELL);
+		expect(send).toHaveBeenCalledTimes(1);
+	});
+
 	it('lets go of the page when its pack is turned off', async () => {
 		const article = addPost('8');
 		await watchPage(ctx);

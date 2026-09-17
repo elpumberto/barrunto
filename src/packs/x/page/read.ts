@@ -1,4 +1,4 @@
-import type { Reading } from '@/engine';
+import type { LabelPlace, Reading } from '@/engine';
 import type { Post } from '../post';
 import { parseCount } from './count';
 import { selectors } from './selectors';
@@ -129,13 +129,14 @@ const LINE_AT_MOST = 2;
  * starts under it. But after a module X.com leaves an empty box as a gap, and draws the line inside
  * it, with air on both sides: there the labels hang from wherever that line turns out to be.
  */
-export function labelPlace(article: HTMLElement): { top: string; right: string } {
+export function labelPlace(article: HTMLElement): Exclude<LabelPlace, 'inline'> {
 	const cell = article.closest(selectors.cell);
 	const above = cell?.previousElementSibling;
-	const height = above?.getBoundingClientRect().height ?? 0;
-	if (!cell || !above || above.textContent?.trim() || height <= 0 || height > GAP_AT_MOST) {
-		return { top: '0', right: FROM_THE_RIGHT };
-	}
+	const hangsFromThePost = { top: '0', right: FROM_THE_RIGHT };
+	// What is above is nearly always a post: that is told by its words, without measuring anything.
+	if (!cell || !above || above.textContent?.trim()) return hangsFromThePost;
+	const height = above.getBoundingClientRect().height;
+	if (height <= 0 || height > GAP_AT_MOST) return hangsFromThePost;
 	const line = [...above.querySelectorAll('*')].find((inside) => {
 		const thickness = inside.getBoundingClientRect().height;
 		return thickness > 0 && thickness <= LINE_AT_MOST;
@@ -144,7 +145,8 @@ export function labelPlace(article: HTMLElement): { top: string; right: string }
 	return { top: `${Math.round(from)}px`, right: FROM_THE_RIGHT };
 }
 
-/** Where the tuning detail goes: at the end of the post's content, under the row of buttons. */
-export function tuningAnchor(article: HTMLElement): HTMLElement {
-	return own<HTMLElement>(article, selectors.actions)?.parentElement ?? article;
-}
+/**
+ * Where the tuning detail goes: at the end of the post, outside what is faded or hidden with it, so
+ * that why a post was hidden can be seen without showing the post.
+ */
+export const tuningAnchor = (article: HTMLElement): HTMLElement => article;
