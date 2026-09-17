@@ -30,7 +30,11 @@ export const apiKey = storage.defineItem<string | null>('local:key', {
 const HN_NOISE = ['snark', 'tangent'];
 
 /** A pack's settings in versions 2 and 3: before each noise judgment had its treatment, when fading was a control of Hacker News's own. */
-type PackSettingsV3 = Omit<PackSettings, 'treatments'>;
+type PackSettingsV3 = Omit<PackSettings, 'treatments'> & { options?: Record<string, boolean> };
+/** Version 4 still kept a place for controls of a pack's own, which no pack has. */
+type SettingsV4 = Omit<Settings, 'packs'> & {
+	packs: Record<string, PackSettings & { options?: unknown }>;
+};
 interface SettingsV2 {
 	paused: boolean;
 	tuning: boolean;
@@ -40,7 +44,7 @@ type SettingsV3 = SettingsV2 & { lookAhead: number };
 
 export const settings = storage.defineItem<Settings>('local:settings', {
 	fallback: defaultSettings,
-	version: 4,
+	version: 5,
 	migrations: {
 		// X.com stays on for whoever had it, with the sensitivity they had chosen.
 		2: ({ paused, sensitivity, tuning }: SettingsV1): SettingsV2 => ({
@@ -53,7 +57,7 @@ export const settings = storage.defineItem<Settings>('local:settings', {
 			lookAhead: defaultSettings.lookAhead
 		}),
 		// Whoever had Hacker News fade its noise keeps it faded, and whoever had it not, only labelled.
-		4: (before: SettingsV3): Settings => ({
+		4: (before: SettingsV3): SettingsV4 => ({
 			...before,
 			packs: Object.fromEntries(
 				Object.entries(before.packs).map(([id, { options = {}, ...chosen }]) => {
@@ -63,6 +67,15 @@ export const settings = storage.defineItem<Settings>('local:settings', {
 						id === 'hn' ? Object.fromEntries(HN_NOISE.map((j) => [j, asked])) : {};
 					return [id, { ...chosen, options: rest, treatments }];
 				})
+			)
+		}),
+		5: ({ packs: before, ...rest }: SettingsV4): Settings => ({
+			...rest,
+			packs: Object.fromEntries(
+				Object.entries(before).map(([id, { enabled, sensitivity, treatments }]) => [
+					id,
+					{ enabled, sensitivity, treatments }
+				])
 			)
 		})
 	}

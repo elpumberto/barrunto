@@ -15,10 +15,9 @@ import {
 
 beforeEach(() => fakeBrowser.reset());
 
-/** A made-up pack with one control of its own, off as it ships, and one judgment of noise among two. */
+/** A made-up pack with one judgment of noise among two. */
 const hn = {
 	id: 'hn',
-	controls: [{ id: 'loud', title: '', help: '', initial: false }],
 	rules: {
 		judgments: [
 			{ id: 'snark', noise: true },
@@ -53,14 +52,13 @@ describe('what is chosen for a pack', () => {
 			hn: {
 				enabled: true,
 				sensitivity: 'medium',
-				treatments: { snark: 'fade' },
-				options: { loud: false }
+				treatments: { snark: 'fade' }
 			}
 		});
-		await changePack(hn, ({ options }) => ({ options: { ...options, loud: true } }));
+		await changePack(hn, ({ treatments }) => ({ treatments: { ...treatments, snark: 'hide' } }));
 		expect((await settings.getValue()).packs.hn).toMatchObject({
 			enabled: true,
-			options: { loud: true }
+			treatments: { snark: 'hide' }
 		});
 	});
 
@@ -76,7 +74,7 @@ describe('what is chosen for a pack', () => {
 			paused: true,
 			tuning: false,
 			lookAhead: 3,
-			packs: { x: { enabled: true, sensitivity: 'high', treatments: {}, options: {} } }
+			packs: { x: { enabled: true, sensitivity: 'high', treatments: {} } }
 		});
 		expect(await totalCounters.getValue()).toEqual({ items: 7, tokensIn: 70, tokensOut: 7 });
 	});
@@ -93,11 +91,10 @@ describe('what is chosen for a pack', () => {
 		expect((await settings.getValue()).packs.hn).toEqual({
 			enabled: true,
 			sensitivity: 'low',
-			treatments: { snark: 'fade', tangent: 'fade' },
-			options: {}
+			treatments: { snark: 'fade', tangent: 'fade' }
 		});
 		// A pack stored with no options at all does not stop the rest from being converted.
-		expect((await settings.getValue()).packs.x).toEqual({ treatments: {}, options: {} });
+		expect((await settings.getValue()).packs.x).toEqual({ treatments: {} });
 
 		fakeBrowser.reset();
 		await fakeBrowser.storage.local.set(

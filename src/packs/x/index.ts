@@ -11,6 +11,5 @@ export const pack: Pack<Post> = {
 	description:
 		'Tells apart the posts made to farm reactions, the ones picking a fight and the ones worth your time.',
 	sites: ['https://x.com/*'],
-	controls: [],
 	rules
 };

@@ -116,7 +116,7 @@ export async function watchPage(ctx: ContentScriptContext, pack: Pack, page: Pag
 
 	function paint(element: HTMLElement, outcome: Outcome, arrive: boolean) {
 		try {
-			const { sensitivity, options, treatments } = chosen();
+			const { sensitivity, treatments } = chosen();
 			const analysis = 'item' in outcome ? outcome.analysis : null;
 			const labels = analysis?.analyzed
 				? labelsFor(rules.judgments, analysis.strengths, sensitivity)
@@ -127,7 +127,6 @@ export async function watchPage(ctx: ContentScriptContext, pack: Pack, page: Pag
 			const parts = page.parts(element);
 			const lit = ground();
 			paintLabels(anchor, labels, place, arrive);
-			page.act?.(element, labels, options);
 
 			const id = 'item' in outcome ? outcome.item.id : null;
 			paintTreatment(parts, id && revealed.has(id) ? 'label' : treatmentFor(labels, treatments), {
@@ -160,7 +159,6 @@ export async function watchPage(ctx: ContentScriptContext, pack: Pack, page: Pag
 	function unpaint(element: HTMLElement) {
 		try {
 			clearLabels(page.labelAnchor(element));
-			page.act?.(element, [], chosen().options);
 			const none = { named: [], roomy: false, ground: ground(), show() {} };
 			paintTreatment(page.parts(element), 'label', none);
 			clearTuning(page.tuningAnchor(element));

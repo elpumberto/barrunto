@@ -11,6 +11,5 @@ export const pack: Pack<Comment> = {
 	description:
 		'Tells apart the comments that know the subject, the sneers and the ones that wander off it.',
 	sites: ['https://news.ycombinator.com/*'],
-	controls: [],
 	rules
 };

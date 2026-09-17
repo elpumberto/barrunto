@@ -3,8 +3,7 @@ import type { Judgment, Pack, PackSettings, Sensitivity, Treatment } from '@/eng
 import { fold } from './redraw';
 import { texts } from './texts';
 
-// What the user can adjust of a pack: the sensitivity, which every pack has, what is done to what
-// its noise judgments label, and then the pack's own controls. Everything drawn as HTML here is Barrunto's own or a pack's, constants in the
+// What the user can adjust of a pack: its sensitivity, and what is done to what its noise judgments label. Everything drawn as HTML here is Barrunto's own or a pack's, constants in the
 // code: nothing comes from a page.
 
 export const toggle = (action: string, on: boolean, name: string, data = '') =>
@@ -41,21 +40,13 @@ export function packControls(pack: Pack, chosen: PackSettings): string {
 		(s) =>
 			`<button type="button" data-action="sensitivity" ${of} data-value="${s}" aria-pressed="${s === chosen.sensitivity}">${texts.sensitivity.stops[s]}</button>`
 	).join('');
-	const own = pack.controls
-		.map(
-			(control) =>
-				`<div class="inline"><div><div class="title">${control.title}</div><p class="help">${control.help}</p></div>
-				${toggle('option', chosen.options[control.id] ?? control.initial, control.title, `${of} data-value="${control.id}"`)}</div>`
-		)
-		.join('');
 	return `<div class="title">${texts.sensitivity.title}</div>
 		<div class="stops" role="group" aria-label="${texts.sensitivity.title}">${stops}</div>
-		<p class="help">${texts.sensitivity.help[chosen.sensitivity]}</p>${noise(pack, chosen)}${own}`;
+		<p class="help">${texts.sensitivity.help[chosen.sensitivity]}</p>${noise(pack, chosen)}`;
 }
 
 export interface PackActions {
 	setSensitivity(packId: string, sensitivity: Sensitivity): void;
-	setOption(packId: string, controlId: string, on: boolean): void;
 	setTreatment(packId: string, judgmentId: string, treatment: Treatment): void;
 }
 
@@ -66,8 +57,6 @@ export function onPackControl(button: HTMLElement | null, actions: PackActions):
 	if (action === 'sensitivity') actions.setSensitivity(pack, value as Sensitivity);
 	else if (action === 'treatment' && judgment) {
 		actions.setTreatment(pack, judgment, value as Treatment);
-	} else if (action === 'option') {
-		actions.setOption(pack, value, button!.getAttribute('aria-checked') !== 'true');
 	} else return false;
 	return true;
 }

@@ -50,7 +50,7 @@ const chosen = (
 	paused: false,
 	tuning: false,
 	lookAhead: 0,
-	packs: { x: { enabled: true, sensitivity, treatments: {}, options: {} } },
+	packs: { x: { enabled: true, sensitivity, treatments: {} } },
 	...change
 });
 
@@ -311,11 +311,9 @@ describe('watching the page', () => {
 			strengths: { insight: 0, snark: 0.9, tangent: 0 },
 			answers: {}
 		};
-		const asking = (treatments: Record<string, 'label' | 'fade' | 'hide'>, loud = false) => ({
-			...chosen(),
-			packs: {
-				hn: { enabled: true, sensitivity: 'medium' as const, treatments, options: { loud } }
-			}
+		const asking = (treatments: Record<string, 'label' | 'fade' | 'hide'>, tuning = false) => ({
+			...chosen({ tuning }),
+			packs: { hn: { enabled: true, sensitivity: 'medium' as const, treatments } }
 		});
 		let row: HTMLElement;
 		const words = () => row.querySelector<HTMLElement>('.comment')!;
@@ -330,10 +328,9 @@ describe('watching the page', () => {
 			vi.mocked(send).mockResolvedValue(snarky);
 		});
 
-		it('reads the page with the pack it is given, and lets the pack act on what it labels', async () => {
-			const act = vi.fn();
-			await pageSettings.setValue(asking({}, true));
-			await watch(ctx, hn, { ...hnPage, act });
+		it("reads the page with the pack it is given, and paints that pack's labels", async () => {
+			await pageSettings.setValue(asking({ snark: 'label' }));
+			await watch(ctx, hn, hnPage);
 			OnScreen.last.show(row, 1);
 			await vi.advanceTimersByTimeAsync(hnPage.dwellMs);
 			expect(send).toHaveBeenCalledWith(
@@ -344,9 +341,6 @@ describe('watching the page', () => {
 				})
 			);
 			expect(labelsOn(row)).toEqual(['snark']);
-			expect(act).toHaveBeenLastCalledWith(row, [expect.objectContaining({ id: 'snark' })], {
-				loud: true
-			});
 		});
 
 		it('fades or folds away what the user asks, as they ask it, and shows it after all on a click', async () => {

@@ -99,11 +99,7 @@ const actions: PopupActions = {
 			treatments: { ...treatments, [judgmentId]: treatment }
 		}));
 	},
-	setOption: (packId, controlId, on) => {
-		const pack = packById(packId);
-		if (pack)
-			void changePack(pack, ({ options }) => ({ options: { ...options, [controlId]: on } }));
-	},
+
 	setTuning: (tuning) => void changeSettings({ tuning }),
 	setLookAhead: (lookAhead) => void changeSettings({ lookAhead }),
 	resetCounters: () => void send({ type: 'resetCounters' }),

@@ -102,30 +102,17 @@ export interface Rules<I extends Item = Item> {
 	judgments: Judgment[];
 }
 
-/** A switch a pack puts in front of the user, besides the ones every pack gets. */
-export interface Control {
-	id: string;
-	title: string;
-	help: string;
-	/** How it stands until the user moves it. */
-	initial: boolean;
-}
-
-/** How the user has left a pack's controls, by control id. */
-export type Options = Record<string, boolean>;
-
 /** What the user has chosen for one pack. */
 export interface PackSettings {
 	enabled: boolean;
 	sensitivity: Sensitivity;
 	/** What is done to what each noise judgment labels, by judgment id. */
 	treatments: Record<string, Treatment>;
-	options: Options;
 }
 
 /**
  * Everything specific to one site and one purpose, apart from the page itself: who it is, where it
- * acts, what it lets the user adjust and its rules. This half knows no page, so the background and
+ * acts and its rules. This half knows no page, so the background and
  * the extension's own pages can use it. The half that reads the page is a `PageHalf`.
  *
  * A pack is written for its own kind of item and used by an engine that knows none. The places an
@@ -138,7 +125,6 @@ export interface Pack<I extends Item = Item> {
 	description: string;
 	/** Where it acts, as match patterns: `https://x.com/*`. The user grants each pack its sites. */
 	sites: string[];
-	controls: Control[];
 	rules: Rules<I>;
 }
 
@@ -151,7 +137,7 @@ export type Reading<I extends Item = Item> = { item: I } | { skipped: string } |
  */
 export type LabelPlace = { top: string; right: string } | 'inline';
 
-/** The half of a pack that runs inside the page: where the items are, how one is read and what is done to it. */
+/** The half of a pack that runs inside the page: where the items are, how one is read, and where what Barrunto adds to it goes. */
 export interface PageHalf<I extends Item = Item> {
 	find(root: ParentNode): HTMLElement[];
 	/** Which item an element shows. Cheap enough to ask on every change of the page. */
@@ -175,9 +161,4 @@ export interface PageHalf<I extends Item = Item> {
 	 * named in that line.
 	 */
 	parts(element: HTMLElement): { faded: HTMLElement[]; hidden: HTMLElement[] };
-	/**
-	 * What the pack does to an item besides labelling it, given the labels it got and how the pack's
-	 * controls stand. Called again whenever either changes, so it has to undo as well as do.
-	 */
-	act?(element: HTMLElement, labelled: Judgment[], options: Options): void;
 }

@@ -72,9 +72,9 @@ A pack has two halves, because one runs inside the page and the other does not:
 
 | In a pack's folder | What                                                                                                                                                         |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `index.ts`         | Who it is: its name, the sites it acts on, the controls it puts in front of the user, its rules                                                               |
+| `index.ts`         | Who it is: its name, what it is for, the sites it acts on, its rules                                                                                          |
 | `rules/`           | The questions for Jev, the page signals, the judgments with their recipes and thresholds, the labels, and how an item is put in front of Jev                  |
-| `page/`            | Where things are on the site's page and how an item is read, where its labels go, what of it is faded or hidden, and what else is done to it. When the site changes, `selectors.ts` is the fix |
+| `page/`            | Where things are on the site's page and how an item is read, where its labels go, and what of it is faded or hidden. When the site changes, `selectors.ts` is the fix |
 
 Who may import whom is kept by lint rules in `eslint.config.js`: the engine and the packs do not know Chrome, the engine and a pack's rules do not know the page either, a pack does not know another, only `src/jev` knows the SDK, only the content script takes the page halves, and it cannot reach the key. `src/borders.test.ts` checks that those rules still bite.
 
@@ -98,4 +98,4 @@ Built with [WXT](https://wxt.dev) and TypeScript, with no UI framework. The word
 
 ## Licence
 
-[MIT](LICENSE).
+[MIT](LICENSE). The built extension carries the notices of the packages bundled in it, in `THIRD-PARTY-NOTICES.txt`; `npm run notices` writes it again when one of them changes.

@@ -22,7 +22,7 @@ describe('the packs', () => {
 		}
 	});
 
-	describe.each(packs)('$name', ({ rules, controls }) => {
+	describe.each(packs)('$name', ({ rules }) => {
 		it('counts an answer from somewhere short of certainty', () => {
 			expect(rules.doubt).toBeGreaterThanOrEqual(0);
 			expect(rules.doubt).toBeLessThan(1);
@@ -50,10 +50,9 @@ describe('the packs', () => {
 			}
 		});
 
-		it('names each judgment and each control once', () => {
-			for (const ids of [rules.judgments.map((j) => j.id), controls.map((c) => c.id)]) {
-				expect(new Set(ids).size).toBe(ids.length);
-			}
+		it('names each judgment once', () => {
+			const ids = rules.judgments.map((j) => j.id);
+			expect(new Set(ids).size).toBe(ids.length);
 		});
 	});
 });
