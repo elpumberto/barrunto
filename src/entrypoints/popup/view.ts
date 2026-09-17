@@ -8,7 +8,7 @@ import { onPackControl, packControls, toggle } from './pack-controls';
 import type { PackActions } from './pack-controls';
 import eyebrow from '@/assets/icon.svg?raw';
 import wordmark from '@/assets/wordmark.svg?raw';
-import { fold, keepOneFoldOpen, redraw } from './redraw';
+import { fold, redraw } from './redraw';
 import { packsView } from './packs-view';
 import { texts } from './texts';
 
@@ -191,7 +191,6 @@ export function renderPopup(root: HTMLElement, state: PopupState, actions: Popup
 	// On a change of screen what had the focus is gone: it goes to where the new one starts.
 	if (shown.get(root) !== screen) {
 		if (shown.has(root)) root.querySelector<HTMLElement>(STARTS_AT[screen]!)?.focus();
-		else keepOneFoldOpen(root);
 		shown.set(root, screen);
 	}
 

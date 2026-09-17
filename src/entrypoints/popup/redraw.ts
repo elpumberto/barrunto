@@ -17,7 +17,8 @@ function focusedIn(root: HTMLElement): string | null {
 
 /**
  * A part that shows one line until it is opened. `brief` is what that line says besides its title.
- * Opening one closes the others, so that the popup never outgrows its window.
+ * Folds share a name, so opening one closes the others (Chrome does that from 120, which is the
+ * least Barrunto asks for) and the popup never outgrows its window.
  */
 export const fold = (name: string, title: string, brief: string, body: string) =>
 	`<details class="fold" name="fold" data-fold="${name}"><summary data-fold="${name}"><span class="title">${title}</span><span class="brief">${brief}</span></summary>
@@ -63,18 +64,3 @@ const caretOf = (input: HTMLInputElement) => ({
 	start: input.selectionStart,
 	end: input.selectionEnd
 });
-
-/** For browsers where folds do not close one another by themselves: `<details name>` came with Chrome 120. */
-export function keepOneFoldOpen(root: HTMLElement): void {
-	root.addEventListener(
-		'toggle',
-		(event) => {
-			const opened = event.target;
-			if (!(opened instanceof HTMLDetailsElement) || !opened.open) return;
-			for (const other of root.querySelectorAll<HTMLDetailsElement>('details[open]')) {
-				if (other !== opened) other.open = false;
-			}
-		},
-		true
-	);
-}

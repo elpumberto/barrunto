@@ -17,7 +17,7 @@ It is an experiment with Jev, not a product: it is not in the Chrome Web Store, 
 
 Download `barrunto-chrome.zip` from the [latest release](../../releases/latest) and unzip it. In Chrome, open `chrome://extensions`, turn on developer mode, choose *Load unpacked* and pick the unzipped folder.
 
-Or build it yourself, with Node 20 or later:
+Or build it yourself, with Node 22 or later:
 
     npm install
     npm run build

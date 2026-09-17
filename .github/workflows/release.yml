@@ -19,6 +19,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: The tag is the version the extension says it is
+        run: test "v$(node -p "require('./package.json').version")" = "$GITHUB_REF_NAME"
+      - run: npm run check
+      - run: npm run lint
       - run: npm test
       - run: npm run zip
       - name: Name the archive without its version, so the README's link never goes stale

@@ -4,7 +4,7 @@ import foldCss from './fold.css?inline';
 import type { Ground } from './ground';
 import logo from '@/assets/icon.svg?raw';
 import labelCss from './label.css?inline';
-import labelsHostCss from './labels.css?inline';
+import labelsHostCss from './labels-host.css?inline';
 import type { Tuning } from './tuning';
 import tuningCss from './tuning.css?inline';
 

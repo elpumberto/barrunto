@@ -10,8 +10,9 @@ export default defineConfig({
 	imports: false,
 	manifest: {
 		name: 'Barrunto',
-		// The first Chrome where the background can open session storage to a content script.
-		minimum_chrome_version: '102',
+		// What the popup needs for its folds to close one another by themselves. Everything else asks
+		// for less: the build is for Chrome 111 and later, and optional sites came with 102.
+		minimum_chrome_version: '120',
 		// `scripting` is what lets the background have the content script run only where a pack is on.
 		// `activeTab` tells the popup the address of the page it is opened over, and of no other, so
 		// that it can offer that page's pack.

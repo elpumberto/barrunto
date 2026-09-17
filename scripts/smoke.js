@@ -90,7 +90,15 @@ try {
 		await popup.waitForSelector(`[data-action="enable"][data-pack="${pack}"][aria-checked="true"]`);
 		await popup.click('[data-action="home"]');
 	};
+	/** The sites Chrome has the content script run on, as the background registered it. */
+	const registered = async () => {
+		const background = await worker.worker();
+		const scripts = await background.evaluate(() => chrome.scripting.getRegisteredContentScripts());
+		return scripts.flatMap((script) => script.matches).sort();
+	};
+	assert.deepEqual(await registered(), [], 'with no pack on, the script runs nowhere');
 	await turnOn('x');
+	assert.deepEqual(await registered(), ['https://x.com/*'], 'and then only where a pack is on');
 	await popup.click('[data-action="tuning"]');
 
 	/** How many items Barrunto reads ahead of the user, set in the popup. */
@@ -176,12 +184,17 @@ try {
 	console.log('labels per post on ultra:', JSON.stringify(labels));
 	assert.equal(await analyzed(), ON_SCREEN, 'moving the sensitivity asks Jev nothing');
 	assert.ok(onUltra > onMedium, 'ultra labels more than medium');
-	assert.ok(labels.slice(ON_SCREEN + 1).flat().length === 0, 'posts never on screen get no label');
+	assert.ok(labels.slice(ON_SCREEN).flat().length === 0, 'posts never on screen get no label');
 
 	// A pack that is off acts nowhere; turned on, it reads its own site with its own labels.
 	await page.bringToFront();
 	await page.goto('https://news.ycombinator.com/item?id=1');
-	await new Promise((resolve) => setTimeout(resolve, 2500));
+	assert.deepEqual(
+		await registered(),
+		['https://x.com/*'],
+		'a pack that is off is registered nowhere'
+	);
+	await new Promise((resolve) => setTimeout(resolve, 1500));
 	assert.equal(await page.$('[data-barrunto]'), null, 'a pack that is off leaves its site alone');
 	await turnOn('hn');
 	// Reading ahead: the comments in sight and the next few past them, and no further.
@@ -194,6 +207,7 @@ try {
 	await waitForLooked('td.default', IN_SIGHT + AHEAD);
 	const onThread = await labelsOnPage(page, 'tr.comtr', '.comhead >');
 	console.log('labels per comment on ultra:', JSON.stringify(onThread));
+	assert.ok(onThread.flat().length > 0, 'some comments get a label on ultra');
 	assert.ok(
 		onThread.flat().every((id) => ['insight', 'snark', 'tangent'].includes(id)),
 		'comments get the labels of their own pack'
@@ -223,6 +237,24 @@ try {
 		ON_SCREEN + IN_SIGHT + AHEAD,
 		'the comments in sight and the ones read ahead are counted with the posts, and no others'
 	);
+
+	// A pack turned off and on again with its page open: the page is handed the script a second time,
+	// and the copy that carries on reads what the first one never got to.
+	const flip = async (pack, to) => {
+		await popup.bringToFront();
+		await popup.click('[data-action="packs"]');
+		await popup.click(`[data-action="enable"][data-pack="${pack}"]`);
+		await popup.waitForSelector(
+			`[data-action="enable"][data-pack="${pack}"][aria-checked="${to}"]`
+		);
+		await popup.click('[data-action="home"]');
+	};
+	await flip('hn', false);
+	assert.deepEqual(await registered(), ['https://x.com/*'], 'turned off, its site is let go of');
+	await flip('hn', true);
+	await page.bringToFront();
+	await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+	await waitForLooked('td.default', COMMENTS);
 
 	assert.deepEqual(errors, [], 'nothing threw in the popup or the page');
 	console.log('ok');

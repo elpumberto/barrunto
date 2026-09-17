@@ -198,21 +198,6 @@ describe('the popup', () => {
 		expect(root.firstElementChild).toBe(before);
 	});
 
-	it('closes the other folds when one is opened, also where the browser does not', () => {
-		draw({
-			pack: hn,
-			settings: { ...connected.settings, packs: { hn: connected.settings.packs.x! } }
-		});
-		const [noise, usage] = ['noise', 'usage'].map((name) =>
-			root.querySelector<HTMLDetailsElement>(`details[data-fold="${name}"]`)!
-		);
-		noise!.open = true;
-		usage!.open = true;
-		usage!.dispatchEvent(new Event('toggle'));
-		expect(noise!.open).toBe(false);
-		expect(usage!.open).toBe(true);
-	});
-
 	it('takes the focus to where each screen starts, on reaching it', () => {
 		draw({});
 		draw({ view: 'packs' });
