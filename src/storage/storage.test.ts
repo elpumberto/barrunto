@@ -80,6 +80,18 @@ describe('what is chosen for a pack', () => {
 		expect(await totalCounters.getValue()).toEqual({ items: 7, tokensIn: 70, tokensOut: 7 });
 	});
 
+	it('keeps everything chosen before drafts were read, and reads them from then on', async () => {
+		const before = {
+			paused: true,
+			tuning: true,
+			lookAhead: 7,
+			packs: { x: { enabled: true, sensitivity: 'low', treatments: { bait: 'hide' } } }
+		};
+		await fakeBrowser.storage.local.set({ settings: before, settings$: { v: 5 } });
+		await settings.migrate();
+		expect(await settings.getValue()).toEqual({ ...before, checkDrafts: true });
+	});
+
 	it('keeps Hacker News fading its noise for whoever had asked it to, and only labelling for whoever had not', async () => {
 		const stored = (hnBefore: object) => ({
 			settings: { paused: false, tuning: false, lookAhead: 5, packs: { hn: hnBefore, x: {} } },

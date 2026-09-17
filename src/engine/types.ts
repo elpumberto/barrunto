@@ -126,6 +126,8 @@ export interface Pack<I extends Item = Item> {
 	/** Where it acts, as match patterns: `https://x.com/*`. The user grants each pack its sites. */
 	sites: string[];
 	rules: Rules<I>;
+	/** Whether its page half reads what the user writes on the site too; see `DraftsHalf`. */
+	readsDrafts?: boolean;
 }
 
 /** An item as read, the reason in words it is not for analyzing, or nothing when the page is not understood. */

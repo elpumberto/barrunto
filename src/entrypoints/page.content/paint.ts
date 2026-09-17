@@ -321,6 +321,9 @@ export function paintDraft(anchor: HTMLElement, hunch: Hunch, ground: Ground): v
 	const root = shadowIn(anchor, 'draft', labelCss + draftCss);
 	const host = root.host as HTMLElement;
 	host.dataset.ground = ground;
+	// The page may add to the anchor after it: an image attached, a poll. It stays last but for what is Barrunto's.
+	const next = host.nextElementSibling;
+	if (next && !next.hasAttribute(MARK)) anchor.append(host);
 	// While Jev is asked again, what was said before stays, dimmed: the box must not jump under the hands.
 	if (hunch.state === 'waiting' && root.querySelector('.hunch:not(.asking)')) {
 		host.setAttribute('data-stale', '');
@@ -330,6 +333,10 @@ export function paintDraft(anchor: HTMLElement, hunch: Hunch, ground: Ground): v
 	root.querySelector('.hunch')?.remove();
 
 	const box = el('div', hunch.state === 'waiting' ? 'hunch asking' : 'hunch');
+	box.setAttribute('role', 'status');
+	// A click on it is not a click on the page, and does not take the cursor out of what is being written.
+	box.addEventListener('mousedown', (event) => event.preventDefault());
+	box.addEventListener('click', (event) => event.stopPropagation());
 	const said = (text: string) => {
 		const line = el('div', 'said');
 		// The drawing is Barrunto's own, a file in its code.

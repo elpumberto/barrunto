@@ -1,8 +1,8 @@
 // Loads the built extension into a headless Chrome and walks the whole path once, with no network:
 // a bad key, a good key, a pack turned on in the popup's catalogue, a made-up x.com page, labels on
 // the posts that dwell, a change of sensitivity in the popup opened over the page reaching it,
-// counters, a post of the user's own read as they write it; then a made-up Hacker News thread, left alone while its pack is off and labelled
-// without a reload once it is turned on.
+// counters, a post of the user's own read as they write it; then a made-up Hacker News thread,
+// left alone while its pack is off and labelled without a reload once it is turned on.
 // It needs the stand-in build, which also holds leave for every pack's site: `npm run smoke`.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';

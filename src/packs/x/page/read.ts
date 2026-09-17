@@ -39,7 +39,7 @@ function count(article: HTMLElement, selector: string): number {
 }
 
 /** Words as the reader sees them: emoji are images on X.com, with the character in their alt. */
-function visibleText(node: Element): string {
+export function visibleText(node: Element): string {
 	let text = '';
 	for (const child of node.childNodes) {
 		if (child instanceof HTMLImageElement) text += child.alt;

@@ -10,6 +10,12 @@ describe('the packs', () => {
 		expect(Object.keys(pages).sort()).toEqual([...ids].sort());
 	});
 
+	it('say that they read what the user writes exactly when their page half does', () => {
+		for (const pack of packs) {
+			expect(Boolean(pack.readsDrafts), pack.id).toBe(Boolean(pages[pack.id]?.drafts));
+		}
+	});
+
 	it('act on sites Chrome can be asked leave for, and on no site of another pack', () => {
 		for (const pack of packs) {
 			expect(pack.sites.length).toBeGreaterThan(0);

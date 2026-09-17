@@ -32,9 +32,11 @@ export const selectors = {
 	likes: '[data-testid="like"], [data-testid="unlike"]',
 	/** A box a post is written in: `tweetTextarea_0`, and `_1` onwards for the rest of a thread. */
 	draft: '[contenteditable="true"][data-testid^="tweetTextarea_"]',
+	/** What holds a box and its editor. */
+	draftLabel: '[data-testid^="tweetTextarea_"][data-testid$="_label"]',
 	/** A paragraph of the editor inside it. */
 	draftLine: '[data-block="true"]',
-	/** The user's own picture next to what they write. Its name ends in their handle. */
+	/** A picture of somebody: the user's own, before what they write. */
 	ownPicture: '[data-testid^="UserAvatar-Container-"]',
 	/** Images and video attached to what is being written. */
 	attached: '[data-testid="attachments"]',

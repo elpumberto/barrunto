@@ -26,7 +26,11 @@ function addBox(): HTMLElement {
 		<div id="column"><div contenteditable="true" data-testid="tweetTextarea_0"></div></div></div>`;
 	return document.querySelector<HTMLElement>('[contenteditable]')!;
 }
-const type = (box: HTMLElement, words: string) => (box.textContent = words);
+/** As the editor does it: the words of a text that is already there change, and nothing else. */
+function type(box: HTMLElement, words: string) {
+	if (box.firstChild instanceof Text && words) box.firstChild.data = words;
+	else box.textContent = words;
+}
 const hunch = () => document.querySelector('#column > [data-barrunto="draft"]');
 const rows = () =>
 	[...(hunch()?.shadowRoot?.querySelectorAll<HTMLElement>('.row') ?? [])].map(
@@ -106,6 +110,58 @@ describe('watching what the user writes', () => {
 		await vi.advanceTimersByTimeAsync(PAUSE_MS * 2);
 		expect(send).not.toHaveBeenCalled();
 		expect(hunch()).toBeNull();
+	});
+
+	it('keeps saying that Jev is being asked while settings change, and says nothing once reloaded from under', async () => {
+		let answer!: (analysis: Analysis) => void;
+		vi.mocked(send).mockReturnValue(new Promise((resolve) => (answer = resolve as typeof answer)));
+		const box = addBox();
+		await watch();
+		type(box, 'Comment YES if you agree with this');
+		await vi.advanceTimersByTimeAsync(PAUSE_MS * 2);
+		expect(hunch()?.shadowRoot?.querySelector('.waiting')).not.toBeNull();
+		await pageSettings.setValue(chosen({ tuning: true }));
+		await vi.advanceTimersByTimeAsync(200);
+		expect(hunch()?.shadowRoot?.querySelector('.waiting')).not.toBeNull();
+
+		(ctx as { isInvalid: boolean }).isInvalid = true;
+		answer(strengths(0.7, 0));
+		await vi.advanceTimersByTimeAsync(200);
+		expect(rows()).toEqual([]);
+	});
+
+	it('does not ask again about words put back as they were', async () => {
+		vi.mocked(send).mockResolvedValue(strengths(0.7, 0));
+		const box = addBox();
+		await watch();
+		type(box, 'Comment YES if you agree with this');
+		await vi.advanceTimersByTimeAsync(PAUSE_MS * 2);
+		type(box, 'Comment YES if you agree with this, or');
+		await vi.advanceTimersByTimeAsync(400);
+		type(box, 'Comment YES if you agree with this');
+		await vi.advanceTimersByTimeAsync(PAUSE_MS * 2);
+		expect(send).toHaveBeenCalledTimes(1);
+		expect(hunch()?.hasAttribute('data-stale')).toBe(false);
+
+		// Told to stop, it takes away what it had said.
+		await pageSettings.setValue(chosen({ checkDrafts: false }));
+		await vi.advanceTimersByTimeAsync(200);
+		expect(hunch()).toBeNull();
+	});
+
+	it('checks again what it could not, once Jev recovers', async () => {
+		vi.mocked(send).mockResolvedValueOnce({ analyzed: false, reason: 'serviceDown' });
+		vi.mocked(send).mockResolvedValue(strengths(0.7, 0));
+		const box = addBox();
+		await watch();
+		type(box, 'Comment YES if you agree with this');
+		await connection.setValue({ state: 'trouble', reason: 'serviceDown' });
+		await vi.advanceTimersByTimeAsync(PAUSE_MS * 2);
+		expect(hunch()?.shadowRoot?.textContent).toContain('Not checked');
+		await connection.setValue({ state: 'connected' });
+		await vi.advanceTimersByTimeAsync(PAUSE_MS * 2);
+		expect(send).toHaveBeenCalledTimes(2);
+		expect(rows()).toEqual(['bait even at Low (up)']);
 	});
 
 	it('says that it could not check when Jev is in trouble', async () => {

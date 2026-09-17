@@ -129,12 +129,17 @@ function analysis({ settings, pack, leave, packs }: PopupState): string {
 	} else {
 		ofThisPage = `<p class="${anyOn ? 'help' : 'warning'}">${anyOn ? texts.packs.notHere : texts.packs.noneOn}</p>`;
 	}
+	// Only where it means something: over a pack that is on and reads what is written on its site.
+	const drafts =
+		pack?.readsDrafts && chosen?.enabled && leave[pack.id]
+			? `<div class="inline"><div><div class="title">${texts.drafts.title}</div><p class="help">${texts.drafts.help}</p></div>
+			${toggle('drafts', settings.checkDrafts, texts.drafts.title)}</div>`
+			: '';
 	return `<section class="row"><div class="eyebrow">${pack ? pack.name : texts.analysis}</div>
 		${ofThisPage}
 		<div class="inline"><div><label class="title" for="ahead">${texts.ahead.title}</label><p class="help" id="ahead-help">${texts.ahead.help}</p></div>
 			<input id="ahead" class="field count" type="number" min="0" max="${MOST_AHEAD}" step="1" value="${Number(settings.lookAhead) || 0}" title="${texts.ahead.none}" aria-describedby="ahead-help" /></div>
-		<div class="inline"><div><div class="title">${texts.drafts.title}</div><p class="help">${texts.drafts.help}</p></div>
-			${toggle('drafts', settings.checkDrafts, texts.drafts.title)}</div>
+		${drafts}
 		<div class="inline"><div><div class="title">${texts.tuning.title}</div><p class="help">${texts.tuning.help}</p></div>
 			${toggle('tuning', settings.tuning, texts.tuning.title)}</div></section>`;
 }

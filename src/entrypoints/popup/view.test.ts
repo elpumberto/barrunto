@@ -113,6 +113,19 @@ describe('the popup', () => {
 		expect(root.querySelector('.stops [aria-pressed="true"]')!.textContent).toBe('High');
 	});
 
+	it('offers to check drafts only over a pack that is on and reads what is written on its site', () => {
+		const drafts = () => root.querySelector('[data-action="drafts"]');
+		draw({ settings: { ...connected.settings, checkDrafts: false } });
+		expect(drafts()!.getAttribute('aria-checked')).toBe('false');
+		const chosen = { enabled: true, sensitivity: 'high' as const, treatments: {} };
+		draw({ pack: hn, settings: { ...connected.settings, packs: { hn: chosen } } });
+		expect(drafts()).toBeNull();
+		draw({ pack: null });
+		expect(drafts()).toBeNull();
+		draw({ leave: { x: false, hn: true } });
+		expect(drafts()).toBeNull();
+	});
+
 	it('lets each kind of noise be labelled, faded or hidden, and never what is not noise', () => {
 		const treatments = { snark: 'hide' as const };
 		const chosen = { enabled: true, sensitivity: 'medium' as const, treatments };
