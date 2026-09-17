@@ -4,7 +4,7 @@ import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { pack as hn } from '@/packs/hn';
 import { pack as x } from '@/packs/x';
 import { changePack, settings } from '@/storage';
-import { keepPacksCurrent, packsOn } from './packs';
+import { keepPacksCurrent, packsOn, reachOpenTabs } from './packs';
 
 /** Chrome's side of it, worked by hand: the leave held, the script registered, the tabs open. */
 let held: string[];
@@ -82,6 +82,15 @@ describe('keeping the packs current', () => {
 		await onRemoved();
 		await settle();
 		expect(registered[0]!.matches).toEqual(hn.sites);
+		expect(executeScript).toHaveBeenCalledTimes(2);
+	});
+
+	it('hands the script again to the tabs already open after an update, though the sites are the same', async () => {
+		held = [...hn.sites];
+		await changePack(hn, () => ({ enabled: true }));
+		await settle();
+		expect(executeScript).toHaveBeenCalledTimes(1);
+		await reachOpenTabs();
 		expect(executeScript).toHaveBeenCalledTimes(2);
 	});
 

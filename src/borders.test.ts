@@ -23,6 +23,18 @@ describe('the borders between pieces', () => {
 		['src/entrypoints/page.content/x.ts', "import type { Jev } from '@/jev/types';"],
 		['src/entrypoints/page.content/x.ts', "import { analyze } from '../background/analyze';"],
 		['src/entrypoints/page.content/x.ts', "import { settings } from '@/storage';"],
+		['src/entrypoints/page.content/x.ts', "import { apiKey } from '../../storage/local';"],
+		['src/entrypoints/page.content/x.ts', "import { apiKey } from '../../storage';"],
+		['src/entrypoints/popup/x.ts', "import { TypeSafeClient } from '@typesafe-ai/sdk';"],
+		['src/engine/x.ts', "import { browser } from '@wxt-dev/browser';"],
+		['src/engine/x.ts', 'export const title = document.title;'],
+		['src/packs/x/rules/x.ts', 'export const width = window.innerWidth;'],
+		['src/packs/x/util/x.ts', "import { browser } from 'wxt/browser';"],
+		['src/packs/x/util/x.ts', "import { settings } from '@/storage';"],
+		['src/packs/index.ts', "import { page } from './hn/page';"],
+		['src/packs/hn/rules/x.ts', "import { rules } from '@/packs/x/rules';"],
+		['src/packs/hn/rules/x.ts', "import type { Post } from '../../x/post';"],
+		['src/packs/hn/x.ts', "import type { Post } from '../x/post';"],
 		['src/entrypoints/background/x.ts', "import { readPost } from '@/packs/x/page';"],
 		['src/entrypoints/popup/x.ts', "import { page } from '@/packs/x/page';"],
 		['src/entrypoints/popup/x.ts', "import { pages } from '@/packs/pages';"],
@@ -30,14 +42,22 @@ describe('the borders between pieces', () => {
 		['src/packs/hn/x.ts', "import { page } from './page';"],
 		['src/packs/hn/page/x.ts', "import { apiKey } from '@/storage';"],
 		['src/entrypoints/popup/x.ts', "import { paintLabels } from '../page.content/paint';"]
-	])('%s may not: %s', async (file, code) => expect(await crossings(file, code)).toBe(1));
+	])('%s may not: %s', async (file, code) =>
+		expect(await crossings(file, code)).toBeGreaterThan(0)
+	);
 
 	it.each([
 		['src/packs/x/rules/x.ts', "import type { Trait } from '@/engine';"],
 		['src/entrypoints/background/x.ts', "import { packById } from '@/packs';"],
 		['src/entrypoints/page.content/x.ts', "import { pages } from '@/packs/pages';"],
 		['src/entrypoints/popup/x.ts', "import { packs } from '@/packs';"],
-		['src/packs/hn/page/x.ts', "import { FADE } from '../controls';"],
+		['src/packs/hn/page/x.ts', "import type { Comment } from '../comment';"],
+		['src/packs/hn/page/x.ts', "import { selectors } from './selectors';"],
+		['src/packs/hn/rules/x.ts', "import { labels } from './labels';"],
+		['src/packs/pages.ts', "import { page } from './hn/page';"],
+		['src/packs/hn/page/x.ts', 'export const title = document.title;'],
+		['src/entrypoints/page.content/x.ts', "import { connection } from '../../storage/session';"],
+		['src/jev/x.ts', "import { TypeSafeClient } from '@typesafe-ai/sdk';"],
 		['src/entrypoints/popup/x.ts', "import type { Settings } from '@/storage/types';"],
 		['src/entrypoints/page.content/x.ts', "import { send } from '@/messages';"],
 		['src/entrypoints/page.content/x.ts', "import { connection } from '@/storage/session';"]

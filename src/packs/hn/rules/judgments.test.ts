@@ -11,8 +11,6 @@ import { rules } from '.';
 const comment = (length: number): Comment => ({
 	id: '1',
 	text: 'x'.repeat(length),
-	author: 'someone',
-	depth: 1,
 	story: { title: 'A made-up story', text: '' },
 	parent: null
 });

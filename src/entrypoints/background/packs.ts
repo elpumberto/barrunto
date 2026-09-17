@@ -67,6 +67,15 @@ function sync(): Promise<void> {
 }
 
 /**
+ * After an update, or a reload while working on it, the pages already open are left with a copy of
+ * the script that the extension has gone from under. They are handed the new one.
+ */
+export async function reachOpenTabs() {
+	await sync();
+	await reach((await packsOn()).flatMap((pack) => pack.sites));
+}
+
+/**
  * Chrome runs a newly registered script only on pages loaded from then on: the ones already open
  * get it by hand. Nobody waits for this: a tab that is slow to take it holds nothing else up, and
  * one that cannot take it (still loading, discarded) picks the script up when it next loads.

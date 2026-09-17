@@ -23,6 +23,11 @@ describe('the packs', () => {
 	});
 
 	describe.each(packs)('$name', ({ rules, controls }) => {
+		it('counts an answer from somewhere short of certainty', () => {
+			expect(rules.doubt).toBeGreaterThanOrEqual(0);
+			expect(rules.doubt).toBeLessThan(1);
+		});
+
 		it('names in every recipe a trait or a page signal that exists, once', () => {
 			const ids = [...rules.traits, ...rules.signals].map((input) => input.id);
 			expect(new Set(ids).size).toBe(ids.length);

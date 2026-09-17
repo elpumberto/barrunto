@@ -147,14 +147,7 @@ describe('analyze', () => {
 		await changePack(hn, () => ({ enabled: true }));
 		await analyze(post('10'));
 		const story = { title: 'A story', text: '' };
-		const comment: Comment = {
-			id: '10',
-			text: 'made up',
-			author: 'a',
-			depth: 0,
-			story,
-			parent: null
-		};
+		const comment: Comment = { id: '10', text: 'made up', story, parent: null };
 		await analyzeFrom(hn.id, comment, 'https://news.ycombinator.com/item?id=1');
 		expect(jev.ask).toHaveBeenCalledTimes(2);
 	});

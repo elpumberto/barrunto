@@ -8,20 +8,15 @@ import { traits } from './traits';
 const MOST_CHARACTERS = { comment: 4000, context: 1500 };
 
 /** The comment as Jev reads it, with what it hangs from. The questions point at these names. */
-function present({ author, text, depth, story, parent }: Comment): Presented {
+function present({ text, story, parent }: Comment): Presented {
 	return {
 		story: {
 			title: story.title,
 			text: story.text.slice(0, MOST_CHARACTERS.context) || null
 		},
 		comment: {
-			author,
 			text: text.slice(0, MOST_CHARACTERS.comment),
-			depth_in_thread: depth,
-			answers: parent && {
-				author: parent.author,
-				text: parent.text.slice(0, MOST_CHARACTERS.context)
-			}
+			answers: parent && { text: parent.text.slice(0, MOST_CHARACTERS.context) }
 		}
 	};
 }

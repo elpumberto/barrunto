@@ -107,7 +107,9 @@ describe('what is done to an item', () => {
 	it('is the most the user asks for among its labels, hiding before fading', () => {
 		expect(treatmentFor([bad!], asked)).toBe('fade');
 		expect(treatmentFor([bad!, worse!], asked)).toBe('hide');
-		expect(treatmentFor([bad!], {})).toBe('label');
+		expect(treatmentFor([bad!], { bad: 'label' })).toBe('label');
+		// What the user has said nothing about is treated as it ships.
+		expect(treatmentFor([bad!], {})).toBe('fade');
 		expect(treatmentFor([], asked)).toBe('label');
 	});
 

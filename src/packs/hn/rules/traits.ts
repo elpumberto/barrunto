@@ -57,9 +57,10 @@ export const traits: Trait[] = [
 	{
 		id: 'quip',
 		name: 'quip',
-		question: 'Is `comment.text` nothing but a one-liner: a joke, a pun, a meme or a wisecrack?',
+		question:
+			'Is the whole of `comment.text` a joke, a pun, a meme or a wisecrack, and nothing else?',
 		yes: 'The whole comment is the joke or the jab.',
-		no: 'The comment says something besides, even if it is witty; or it is not a joke at all.'
+		no: 'The comment says something besides, even if it is witty; or it is not a joke at all, however short.'
 	},
 	{
 		id: 'meta',
@@ -75,6 +76,6 @@ export const traits: Trait[] = [
 		question:
 			'Does `comment.text` leave the subject of `story` and of `comment.answers` behind for an unrelated one?',
 		yes: 'The comment takes a word or a side detail as an excuse to talk about something else: a pet topic, politics, an unrelated product or anecdote.',
-		no: 'The comment stays on what the story or the comment it answers is about, even when it widens it or compares it with something close.'
+		no: 'The comment stays on what the story is about, or on what the comment it answers is about: either is enough, even when it widens the subject or compares it with something close. With little to go by, such as a bare title, it is a no.'
 	}
 ];

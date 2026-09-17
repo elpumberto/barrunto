@@ -27,8 +27,6 @@ describe('readComment, on samples of the real page', () => {
 			item: {
 				id: '1001',
 				text: 'Made-up words of a top comment.\n\nA second paragraph, with a https://site.example/x link.',
-				author: 'someone1',
-				depth: 0,
 				story: { title: 'A made-up story about a database', text: '' },
 				parent: null
 			}
@@ -38,10 +36,10 @@ describe('readComment, on samples of the real page', () => {
 	it('finds the comment each one answers, however many sit in between', () => {
 		const row = open('thread');
 		expect(readComment(row('1003'))).toMatchObject({
-			item: { depth: 2, parent: { author: 'someone2', text: 'Made-up words of a reply.' } }
+			item: { parent: { text: 'Made-up words of a reply.' } }
 		});
 		expect(readComment(row('1004'))).toMatchObject({
-			item: { depth: 1, parent: { author: 'someone1' } }
+			item: { parent: { text: expect.stringContaining('top comment') } }
 		});
 	});
 
@@ -50,7 +48,7 @@ describe('readComment, on samples of the real page', () => {
 		expect(reading).toMatchObject({ item: { text: 'Made-up words of a reply to the reply.' } });
 	});
 
-	it('skips what is left of a flagged comment', () => {
+	it('skips what is left of a flagged comment, which keeps its author', () => {
 		expect(readComment(open('thread')('1005'))).toEqual({ skipped: 'no text' });
 	});
 
@@ -65,7 +63,7 @@ describe('readComment, on samples of the real page', () => {
 		expect(readComment(open('branch')('2001'))).toMatchObject({
 			item: {
 				story: { title: 'A made-up story about a database', text: '' },
-				parent: { author: 'someone1', text: 'Made-up words of the comment that heads the page.' }
+				parent: { text: 'Made-up words of the comment that heads the page.' }
 			}
 		});
 	});
@@ -82,10 +80,24 @@ describe('readComment, on samples of the real page', () => {
 		});
 	});
 
-	it('reads the depth off the width of the push on a page that does not say it', () => {
-		const row = open('thread')('1003');
-		row.querySelector('td.ind')!.removeAttribute('indent');
-		expect(readComment(row)).toMatchObject({ item: { depth: 2 } });
+	it('reads how deep a comment sits off the width of the push, on a page that does not say it', () => {
+		const row = open('thread');
+		for (const cell of document.querySelectorAll('td.ind')) cell.removeAttribute('indent');
+		expect(readComment(row('1003'))).toMatchObject({
+			item: { parent: { text: 'Made-up words of a reply.' } }
+		});
+	});
+
+	it("leaves alone a comment with no story to set it against, as in a list of someone's comments", () => {
+		const row = open('thread')('1001');
+		document.querySelector('.fatitem')!.remove();
+		expect(readComment(row)).toEqual({ skipped: 'no story to set it against' });
+	});
+
+	it('does not take what is left of a flagged comment for what another one answers', () => {
+		const row = open('thread');
+		row('1002').querySelector('.commtext')!.textContent = '[flagged]';
+		expect(readComment(row('1003'))).toMatchObject({ item: { parent: null } });
 	});
 
 	it('does not understand a row that is not shaped like a comment', () => {

@@ -9,7 +9,7 @@ What it reads and what it says depends on the site. Everything Barrunto knows ab
 | X           | Posts, as you scroll   | **Bait**, made to farm reactions; **Flame**, picking a fight; **Signal**, worth your time                                                     |
 | Hacker News | Comments in a thread   | **Insight**, knows the subject or was there; **Snark**, a put-down with no reasons; **Tangent**, about the title, the site or something else |
 
-[Jev](https://docs.typesafe.ai) is TypeSafe's model that answers closed questions with probabilities instead of writing text. Barrunto asks it nine yes/no questions about each post or comment, in a single call, and code combines the answers into the pack's judgments. There is no server: you bring your own TypeSafe key and the extension talks straight to the API.
+[Jev](https://docs.typesafe.ai) is TypeSafe's model that answers closed questions with probabilities instead of writing text. Barrunto asks it a handful of yes/no questions about each post or comment (nine, in the packs it ships with), in a single call, and code combines the answers into the pack's judgments. There is no server: you bring your own TypeSafe key and the extension talks straight to the API.
 
 It is an experiment with Jev, not a product: it is not in the Chrome Web Store, and it gets things wrong.
 
@@ -22,7 +22,7 @@ Or build it yourself, with Node 20 or later:
     npm install
     npm run build
 
-and load the `.output/chrome-mv3` folder the same way. After building again, press the reload arrow on Barrunto's card and reload the X.com tab.
+and load the `.output/chrome-mv3` folder the same way. After building again, press the reload arrow on Barrunto's card; the tabs it reads pick the new build up by themselves.
 
 ## Using it
 
@@ -43,13 +43,13 @@ The icon in the toolbar is in colour while Barrunto reads, grey while it is paus
 1. **It reads what is on the page, and a little ahead of you.** What shows on screen is analyzed at once, and so are the next three items past it, so that their labels are there by the time you are; if you get there first, a small mark says Jev is being asked, and that item goes ahead of the ones read ahead. How many items are read ahead is **Read ahead** in the popup. Every one of them is paid for, read or not: with 0, a post or a comment is analyzed only once it has stayed on screen for a moment, not if it flies past. What a pack has no business reading is left alone: ads, posts from protected accounts, comments that were flagged.
 2. **It asks Jev once per item.** One call carries the item and the pack's yes/no questions, each about one **trait**: does it explicitly ask for a reaction, does it attack someone, does the author show working knowledge of the subject, does the reader learn something from it… Each comes back as the probability of a yes.
 3. **Code combines.** Each judgment has a **recipe**: a list of traits and of signals read off the page (such as many replies for few likes), each with a weight that pushes it or holds it back. An answer counts only when Jev is reasonably sure of it: a lukewarm answer is Jev not knowing, and it weighs nothing. Out of the recipe comes the judgment's **strength**, from 0 to 1.
-4. **It labels or stays quiet.** A label goes up if the strength clears the threshold of the pack's current sensitivity. The answers are kept for the session, so changing the sensitivity, or a weight while tuning, asks Jev nothing.
+4. **It labels or stays quiet.** A label goes up if the strength clears the threshold of the pack's current sensitivity. The answers are kept for the session, so changing the sensitivity asks Jev nothing.
 
 The X.com recipes were tuned against real posts. The Hacker News ones say what they intend and are yet to be tuned the same way: expect them to move.
 
 ## What leaves your browser
 
-What Barrunto reads on the sites whose pack is on goes to `api.typesafe.ai`, with your key, and nowhere else. That is what shows on screen and, with Read ahead, the next few items below it, seen or not. On X.com it is the text of each post, its author and its counts, whether it carries media, a link or is part of a thread and, if it quotes another post, that post's author and text. On Hacker News it is each comment with its author, the story's title and text, and the comment it answers. The key is stored only in your browser, as it is, the way extensions store things. Barrunto makes no requests to the sites it reads: it reads the page you already have, and it cannot read a site whose pack is off, because Chrome holds no leave for it. A site's own scripts can see that Barrunto is there and what it labelled.
+What Barrunto reads on the sites whose pack is on goes to `api.typesafe.ai`, with your key, and nowhere else. That is what shows on screen and, with Read ahead, the next few items below it, seen or not. On X.com it is the text of each post, its author and its counts, whether it carries media, a link or is part of a thread and, if it quotes another post, that post's author and text. On Hacker News it is the words of each comment, the story's title and text, and the words of the comment it answers: nobody's name. The key is stored only in your browser, as it is, the way extensions store things. Barrunto makes no requests to the sites it reads: it reads the page you already have, and it cannot read a site whose pack is off, because Chrome holds no leave for it. A site's own scripts can see that Barrunto is there and what it labelled.
 
 A post can be written to argue with its judge. A label, or its absence, is a hunch, and an author can try to game it.
 
@@ -61,7 +61,7 @@ Everything specific to a site lives together as a **rule pack**, apart from an *
 
 | Where               | What                                                                                                                                          |
 | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/engine`        | The types, among them the shape of a pack; computing strengths from answers and recipes, deciding which labels apply, the call queue          |
+| `src/engine`        | The types, among them the shape of a pack; computing strengths from answers and recipes, deciding which labels apply and what is done to noise, what a pack is like until the user changes it, the call queue |
 | `src/packs`         | One folder per pack, the list of them in `index.ts` and the list of their page halves in `pages.ts`                                           |
 | `src/jev`           | The only piece that knows TypeSafe's SDK, and a stand-in that makes answers up                                                                |
 | `src/storage`       | What is stored, where, with its types                                                                                                         |
@@ -76,11 +76,11 @@ A pack has two halves, because one runs inside the page and the other does not:
 | `rules/`           | The questions for Jev, the page signals, the judgments with their recipes and thresholds, the labels, and how an item is put in front of Jev                  |
 | `page/`            | Where things are on the site's page and how an item is read, where its labels go, what of it is faded or hidden, and what else is done to it. When the site changes, `selectors.ts` is the fix |
 
-Who may import whom is kept by lint rules in `eslint.config.js`: the engine and the packs do not know Chrome, only `src/jev` knows the SDK, only the content script takes the page halves, and it cannot reach the key.
+Who may import whom is kept by lint rules in `eslint.config.js`: the engine and the packs do not know Chrome, the engine and a pack's rules do not know the page either, a pack does not know another, only `src/jev` knows the SDK, only the content script takes the page halves, and it cannot reach the key. `src/borders.test.ts` checks that those rules still bite.
 
 To change what Barrunto looks for on a site, the place is the pack's `rules`: a question in `traits.ts`, a weight in `judgments.ts`. The tests in `judgments.test.ts` are the kinds of item the recipes are meant for.
 
-To write a pack for another site, copy the smaller one, `src/packs/hn`, add it to the two lists in `src/packs`, and the rest follows from there: the manifest asks for its sites as optional, the popup lists it, the content script runs on it once it is on. `src/packs/packs.test.ts` checks that it holds together.
+To write a pack for another site, copy the simpler one, `src/packs/hn`, add it to the two lists in `src/packs`, and the rest follows from there: the manifest asks for its sites as optional, the popup lists it, the content script runs on it once it is on. `src/packs/packs.test.ts` checks that it holds together.
 
 ## Working on it
 

@@ -1,7 +1,10 @@
 import type { Judgment, Sensitivity } from '@/engine';
 import { labels } from './labels';
 
-/** The same for every judgment: a strength means the same whichever recipe it comes from. */
+/**
+ * The same for every judgment: a strength means the same whichever recipe it comes from. They are
+ * the X pack's as they stand, like the weights below: written by intent, yet to be tuned against real threads.
+ */
 const thresholds: Record<Sensitivity, number> = { low: 0.6, medium: 0.42, high: 0.3, ultra: 0.2 };
 
 const insight: Judgment = {

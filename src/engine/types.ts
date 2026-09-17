@@ -52,6 +52,8 @@ export interface Judgment {
 /** What is done to an item that gets the label of a noise judgment: label it and no more, fade it, or fold it away. */
 export const TREATMENTS = ['label', 'fade', 'hide'] as const;
 export type Treatment = (typeof TREATMENTS)[number];
+/** What is done to noise until the user says otherwise: enough to tell it apart at a glance, and nothing out of sight. */
+export const DEFAULT_TREATMENT: Treatment = 'fade';
 
 /** How a judgment is painted. Colours and glyph are the pack's; the shape is the painter's. */
 export interface Label {
@@ -136,8 +138,6 @@ export interface Pack<I extends Item = Item> {
 	description: string;
 	/** Where it acts, as match patterns: `https://x.com/*`. The user grants each pack its sites. */
 	sites: string[];
-	/** What it calls its items, for the counters: "posts", "comments". */
-	items: string;
 	controls: Control[];
 	rules: Rules<I>;
 }
@@ -169,8 +169,8 @@ export interface PageHalf<I extends Item = Item> {
 	/** The element the tuning detail goes at the end of. */
 	tuningAnchor(element: HTMLElement): HTMLElement;
 	/**
-	 * What of the item goes when the user would rather not see it. Faded, its words and what goes
-	 * with them. Hidden, all of it, with who wrote it: a line saying that it is hidden takes its
+	 * What of the item goes when the user would rather not see it, which is the pack's to choose.
+	 * Faded, as a rule, its words and what goes with them. Hidden, all of it, with who wrote it: a line saying that it is hidden takes its
 	 * place, at the end of the parent of the first of these. Labels that are hidden with it are
 	 * named in that line.
 	 */

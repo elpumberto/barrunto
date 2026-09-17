@@ -5,10 +5,8 @@ import { rules } from '.';
 const comment: Comment = {
 	id: '1',
 	text: 'x'.repeat(5000),
-	author: 'someone',
-	depth: 1,
 	story: { title: 'A made-up story', text: 'y'.repeat(5000) },
-	parent: { author: 'other', text: 'z'.repeat(5000) }
+	parent: { text: 'z'.repeat(5000) }
 };
 type Sent = {
 	story: { title: string; text: string | null };
@@ -43,5 +41,9 @@ describe('the Hacker News rules', () => {
 		const length = rules.signals.find((s) => s.id === 'length')!;
 		expect(length.from({ ...comment, text: 'x'.repeat(200) })).toBeCloseTo(0);
 		expect(length.from({ ...comment, text: 'x'.repeat(800) })).toBeCloseTo(1);
+	});
+
+	it("sends nobody's name", () => {
+		expect(JSON.stringify(presented)).not.toMatch(/author|someone/);
 	});
 });

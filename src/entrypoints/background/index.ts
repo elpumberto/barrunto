@@ -6,7 +6,7 @@ import { apiKey, changePack, connection, pageSettings, resetCounters, settings }
 import { analyze } from './analyze';
 import { checkKey } from './check-key';
 import { keepIconCurrent } from './icon';
-import { keepPacksCurrent } from './packs';
+import { keepPacksCurrent, reachOpenTabs } from './packs';
 
 export default defineBackground(() => {
 	// Chrome starts the background only for something it listens to. Without this, reopening the
@@ -19,6 +19,7 @@ export default defineBackground(() => {
 		if (reason === 'update' && previousVersion?.startsWith('1.')) {
 			void changePack(x, () => ({ enabled: true }));
 		}
+		if (reason === 'update') void reachOpenTabs();
 	});
 
 	listen({

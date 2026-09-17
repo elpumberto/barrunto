@@ -20,6 +20,9 @@ function visibleText(node: Element): string {
 	return text;
 }
 
+/** What Hacker News writes where a comment was. */
+const GONE = /^\[(flagged|dead|deleted)\]$/i;
+
 const textIn = (node: Element | null | undefined) => (node ? visibleText(node).trim() : '');
 
 function depthOf(row: HTMLElement): number {
@@ -30,20 +33,24 @@ function depthOf(row: HTMLElement): number {
 	return Math.round(Number(indent?.querySelector('img')?.getAttribute('width') ?? 0) / 40);
 }
 
+/** What a comment says, as what another one answers; nothing if its words are gone. */
+function said(words: Element | null | undefined): Comment['parent'] {
+	const text = textIn(words);
+	return text && !GONE.test(text) ? { text } : null;
+}
+
 /** The comment a row answers: the nearest one above it that sits less deep. */
 function parentOf(row: HTMLElement, depth: number): Comment['parent'] {
 	let above = row.previousElementSibling;
 	while (depth > 0 && above instanceof HTMLElement) {
 		if (above.matches(selectors.comment) && depthOf(above) < depth) {
-			const text = textIn(above.querySelector(selectors.text));
-			return text ? { author: textIn(above.querySelector(selectors.author)), text } : null;
+			return said(above.querySelector(selectors.text));
 		}
 		above = above.previousElementSibling;
 	}
 	// On a page that shows one branch of a thread, the top comments answer the comment that heads it.
 	const head = row.ownerDocument.querySelector(selectors.head);
-	const text = depth === 0 ? textIn(head?.querySelector(selectors.text)) : '';
-	return text ? { author: textIn(head?.querySelector(selectors.author)), text } : null;
+	return depth === 0 ? said(head?.querySelector(selectors.text)) : null;
 }
 
 function storyOf(row: HTMLElement): Comment['story'] {
@@ -59,9 +66,6 @@ function storyOf(row: HTMLElement): Comment['story'] {
 	};
 }
 
-/** What Hacker News writes where a comment was. */
-const GONE = /^\[(flagged|dead|deleted)\]$/i;
-
 export function readComment(row: HTMLElement): Reading<Comment> {
 	const id = commentId(row);
 	const author = row.querySelector(selectors.author);
@@ -73,17 +77,12 @@ export function readComment(row: HTMLElement): Reading<Comment> {
 	// A deleted or flagged comment keeps its place in the thread, with no words of its own left.
 	if (!text || !author || GONE.test(text)) return { skipped: 'no text' };
 
-	const depth = depthOf(row);
-	return {
-		item: {
-			id,
-			text,
-			author: textIn(author),
-			depth,
-			story: storyOf(row),
-			parent: parentOf(row, depth)
-		}
-	};
+	// Away from its thread, in a list of someone's comments, a comment comes with no story to set it
+	// against: whether it keeps to the subject cannot be told, and that is half of what is asked.
+	const story = storyOf(row);
+	if (!story.title) return { skipped: 'no story to set it against' };
+
+	return { item: { id, text, story, parent: parentOf(row, depthOf(row)) } };
 }
 
 /** Where the labels go: at the end of the comment's header, after the links to move about. */
