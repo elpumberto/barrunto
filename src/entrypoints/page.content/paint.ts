@@ -200,6 +200,14 @@ function bar(value: number, ticks?: { thresholds: Judgment['thresholds']; curren
 
 /** What an ingredient put in is shown from this much. */
 const WORTH_SHOWING = 0.01;
+/** An answer, a page signal or a judgment gets a row of its own in the tuning detail from this much. */
+const WORTH_A_ROW = 0.05;
+/**
+ * How many judgments the folded line names. A pack may have many more: the line then names the ones
+ * that got a label and, after them, the strongest of the rest, and says how many it leaves for the
+ * unfolded detail, which has them all.
+ */
+const IN_BRIEF = 4;
 
 const signed = (n: number) => `${n < 0 ? '−' : '+'}${Math.abs(n).toFixed(2)}`;
 
@@ -235,24 +243,42 @@ export function paintTuning(
 	const mark = el('span', 'logo');
 	mark.innerHTML = logo;
 	brief.append(mark);
+	// What came to nothing is named in a line, and not given a row each: among many inputs, the
+	// ones that are there are what is looked for.
+	const nameOf = (input: { name: string; isSignal: boolean }) =>
+		input.isSignal ? `${input.name}*` : input.name;
+	const nothingIn = tuning.inputs.filter((input) => input.value < WORTH_A_ROW).map(nameOf);
 	const inputs = el('div', 'traits');
-	for (const input of tuning.inputs) {
+	for (const input of tuning.inputs.filter((input) => input.value >= WORTH_A_ROW)) {
 		const row = el('div', 'row');
 		row.append(
-			el('span', '', input.isSignal ? `${input.name}*` : input.name),
+			el('span', '', nameOf(input)),
 			bar(input.value),
 			el('span', '', input.value.toFixed(2))
 		);
 		inputs.append(row);
 	}
 
+	const named =
+		tuning.judgments.length <= IN_BRIEF
+			? tuning.judgments
+			: [...tuning.judgments]
+					.sort((a, b) => Number(b.labelled) - Number(a.labelled) || b.strength - a.strength)
+					.slice(0, IN_BRIEF);
+	for (const { judgment, strength, labelled } of named) {
+		const mark = `${labelled ? '●' : '○'} ${judgment.label.text}`;
+		const inBrief = el('span', labelled ? 'up' : '', `${mark} ${strength.toFixed(2)}`);
+		inBrief.style.setProperty('--color', judgment.label.color);
+		brief.append(inBrief);
+	}
+	const leftOut = tuning.judgments.length - named.length;
+	if (leftOut) brief.append(el('span', 'more', `+${leftOut} more`));
+
 	const judgments = el('div', 'judgments');
 	for (const { judgment, strength, labelled, parts } of tuning.judgments) {
 		const name = `${labelled ? '●' : '○'} ${judgment.label.text}`;
-		const inBrief = el('span', labelled ? 'up' : '', `${name} ${strength.toFixed(2)}`);
-		inBrief.style.setProperty('--color', judgment.label.color);
-		brief.append(inBrief);
 
+		if (strength < WORTH_A_ROW && !labelled) continue;
 		const row = el('div', labelled ? 'row up' : 'row');
 		row.style.setProperty('--color', judgment.label.color);
 		const said = parts
@@ -268,10 +294,17 @@ export function paintTuning(
 		judgments.append(row);
 	}
 
+	const nothingOf = tuning.judgments
+		.filter((j) => j.strength < WORTH_A_ROW && !j.labelled)
+		.map((j) => j.judgment.label.text);
 	const whole = el('div', 'whole');
+	for (const tally of tuning.tallies) whole.append(el('div', 'tally', tally));
+	whole.append(inputs);
+	if (nothingIn.length) whole.append(el('div', 'nothing', `nothing in: ${nothingIn.join(' · ')}`));
+	whole.append(judgments);
+	if (nothingOf.length)
+		whole.append(el('div', 'nothing', `○ nothing of: ${nothingOf.join(' · ')}`));
 	whole.append(
-		inputs,
-		judgments,
 		el(
 			'span',
 			'',
