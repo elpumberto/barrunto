@@ -492,7 +492,19 @@ try {
 	assert.deepEqual(await registered(), ['https://x.com/*'], 'turned off, its site is let go of');
 	await flip('hn', true);
 	await page.bringToFront();
-	await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+	// Nobody waits for the page to take the script: the switch says on before the new copy is there,
+	// and a copy that finds the page already at its foot never sees the comments at its head. So the
+	// page is gone down again, from its head, until the copy that carries on has been over all of it.
+	for (
+		let tries = 0;
+		tries < 8 && (await page.evaluate(looked, 'td.default')) < COMMENTS;
+		tries++
+	) {
+		await page.evaluate(() => window.scrollTo(0, 0));
+		await new Promise((resolve) => setTimeout(resolve, 600));
+		await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+		await new Promise((resolve) => setTimeout(resolve, 1200));
+	}
 	await waitForLooked('td.default', COMMENTS);
 
 	assert.deepEqual(errors, [], 'nothing threw in the popup or the page');
