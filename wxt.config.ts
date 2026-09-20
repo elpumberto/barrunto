@@ -1,7 +1,8 @@
 import { defineConfig } from 'wxt';
+import { sitesOf } from './src/engine/sites';
 import { packs } from './src/packs';
 
-const sites = packs.flatMap((pack) => pack.sites);
+const sites = sitesOf(packs);
 const TYPESAFE = 'https://api.typesafe.ai/*';
 
 export default defineConfig({

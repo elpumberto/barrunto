@@ -2,6 +2,7 @@ import {
 	APIConnectionError,
 	APIError,
 	AuthenticationError,
+	choice,
 	noul,
 	PermissionDeniedError,
 	RateLimitError,
@@ -54,8 +55,10 @@ export function createJev(config: TypeSafeClientConfig = {}): Jev {
 		async ask(apiKey, content, traits) {
 			const sdk = clientFor(apiKey);
 			const questions: Questions = {};
-			for (const { id, question, yes, no } of traits) {
-				questions[id] = noul(question, yes || no ? { true: yes, false: no } : undefined);
+			for (const { id, question, yes, no, options } of traits) {
+				questions[id] = options
+					? choice(question, options)
+					: noul(question, yes || no ? { true: yes, false: no } : undefined);
 			}
 			let result;
 			try {
@@ -66,11 +69,19 @@ export function createJev(config: TypeSafeClientConfig = {}): Jev {
 			}
 
 			const answers: Answers = {};
-			for (const { id } of traits) {
+			for (const { id, options } of traits) {
 				const answer = result.answers[id];
 				// An answer that is missing is not a no: better no answers than made-up ones kept for the session.
-				if (answer?.type !== 'noul') throw new JevError('serviceDown');
-				answers[id] = answer.noul;
+				if (answer?.type !== (options ? 'choice' : 'noul')) throw new JevError('serviceDown');
+				if (answer.type === 'noul') answers[id] = answer.noul;
+				if (answer.type === 'choice') {
+					for (const option of Object.keys(options!)) {
+						const chance = answer.probabilities[option];
+						// Jev gives every option its chance: one that is missing is no answer, and not a zero.
+						if (typeof chance !== 'number') throw new JevError('serviceDown');
+						answers[`${id}.${option}`] = chance;
+					}
+				}
 			}
 			const { input_tokens: tokensIn, output_tokens: tokensOut } = result.usage;
 			return { answers, usage: { tokensIn, tokensOut } };

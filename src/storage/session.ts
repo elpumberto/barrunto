@@ -25,6 +25,19 @@ export const connection = storage.defineItem<ConnectionStatus>('session:connecti
 	fallback: { state: 'noKey' }
 });
 
+/**
+ * The pack the user last asked Chrome's leave for, by id, and when, until Chrome's question is
+ * answered. Chrome says which sites leave arrived for and not who asked, and two packs may act on
+ * the same site.
+ */
+export const askedFor = storage.defineItem<{ packId: string; at: number } | null>(
+	'session:askedFor',
+	{ fallback: null }
+);
+
+/** Chrome's question does not stay up for long. A note older than this is of a question nobody answered, or that was turned down. */
+export const ASKED_FOR_MS = 5 * 60 * 1000;
+
 /** The storage keys of the answers kept, oldest first. */
 const answersIndex = storage.defineItem<`session:${string}`[]>('session:answersIndex', {
 	fallback: []

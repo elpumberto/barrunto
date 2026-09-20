@@ -1,0 +1,343 @@
+/* A case file on the jetective's desk: a board of walnut, a brass plate screwed to it with the number of the case, and the typed sheet pinned on, stamped and signed. */
+:host {
+	--wood: #6b4423;
+	--wood-dark: #4a2e16;
+	--wood-edge: #2f1c0c;
+	--brass: #d9bb6e;
+	--brass-dark: #9c7a32;
+	--engraved: #3a2a0c;
+	--paper: #fbf6e6;
+	--rule: #e9dfc3;
+	--typed: #2f2a1e;
+	--faint: #75694d;
+	--track: #e6dbb8;
+	--stamp: #b3261e;
+	--stamp-clear: #0c6b55;
+	display: block;
+	margin: 12px 16px 4px;
+}
+
+/* On a dark page, the same desk with the lamp low. */
+:host([data-ground='dark']) {
+	--wood: #4a2f18;
+	--wood-dark: #2e1c0d;
+	--wood-edge: #1a0f06;
+	--brass: #b89a52;
+	--brass-dark: #7d6126;
+	--paper: #ece3c8;
+	--rule: #d9cfae;
+	--track: #d3c79f;
+}
+
+.file {
+	color: var(--typed);
+	font:
+		12px/18px 'Courier Prime',
+		'Courier New',
+		ui-monospace,
+		Menlo,
+		Consolas,
+		monospace;
+}
+
+/* The brass plate, a screw at each end, the number engraved. */
+.tab {
+	position: relative;
+	z-index: 1;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	max-width: calc(100% - 28px);
+	margin: 0 0 -11px 14px;
+	padding: 2px 22px;
+	border: 1px solid var(--brass-dark);
+	border-radius: 3px;
+	background:
+		radial-gradient(circle at 9px 50%, var(--brass-dark) 0 2px, transparent 2.5px),
+		radial-gradient(circle at calc(100% - 9px) 50%, var(--brass-dark) 0 2px, transparent 2.5px),
+		linear-gradient(175deg, var(--brass), var(--brass-dark) 140%);
+	box-shadow:
+		0 1px 2px rgb(0 0 0 / 50%),
+		inset 0 1px 0 rgb(255 255 255 / 45%);
+	color: var(--engraved);
+	font-weight: 700;
+	letter-spacing: 0.1em;
+	text-shadow: 0 1px 0 rgb(255 255 255 / 35%);
+	text-transform: uppercase;
+}
+
+.tab > svg {
+	flex: none;
+	width: 13px;
+	height: 13px;
+}
+
+/* The board: planks of walnut, the grain running along them, a bevel round the edge. */
+.sheet {
+	padding: 20px 12px 12px;
+	border: 1px solid var(--wood-edge);
+	border-radius: 6px;
+	background:
+		repeating-linear-gradient(
+			91deg,
+			rgb(0 0 0 / 0%) 0 5px,
+			rgb(0 0 0 / 9%) 5px 6px,
+			rgb(0 0 0 / 0%) 6px 13px,
+			rgb(255 255 255 / 4%) 13px 14px
+		),
+		repeating-linear-gradient(180deg, transparent 0 63px, rgb(0 0 0 / 28%) 63px 64px),
+		linear-gradient(100deg, var(--wood), var(--wood-dark) 55%, var(--wood));
+	box-shadow:
+		inset 0 1px 0 rgb(255 255 255 / 14%),
+		inset 0 -2px 3px rgb(0 0 0 / 35%),
+		0 1px 3px rgb(0 0 0 / 35%);
+}
+
+/* The sheet pinned to it, a brass tack at each top corner: ruled faintly, every line of type on a rule. */
+.paper {
+	position: relative;
+	display: grid;
+	gap: 0;
+	padding: 9px 14px;
+	border-radius: 1px;
+	background:
+		radial-gradient(
+			circle at 9px 8px,
+			var(--brass) 0 2px,
+			var(--brass-dark) 2.5px 3.5px,
+			transparent 4px
+		),
+		radial-gradient(
+			circle at calc(100% - 9px) 8px,
+			var(--brass) 0 2px,
+			var(--brass-dark) 2.5px 3.5px,
+			transparent 4px
+		),
+		repeating-linear-gradient(transparent 0 17px, var(--rule) 17px 18px) 0 9px,
+		var(--paper);
+	box-shadow:
+		0 2px 5px rgb(0 0 0 / 45%),
+		0 0 0 1px rgb(0 0 0 / 8%);
+}
+
+.head {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 12px;
+	min-height: 36px;
+	/* Clear of the tacks. */
+	padding: 0 12px;
+}
+
+.letterhead {
+	color: var(--faint);
+	font-size: 11px;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+}
+
+/* Stamped by hand: askew, the ink uneven at the edges. */
+.stamp {
+	flex: none;
+	margin: 2px 2px 0 0;
+	padding: 1px 8px;
+	border: 2px solid currentColor;
+	border-radius: 4px;
+	outline: 1px solid currentColor;
+	outline-offset: 2px;
+	color: var(--stamp);
+	font-size: 13px;
+	font-weight: 700;
+	letter-spacing: 0.16em;
+	text-transform: uppercase;
+	transform: rotate(-7deg);
+	opacity: 0.82;
+}
+
+.stamp[data-state='told'] {
+	color: var(--stamp-clear);
+}
+
+.stamp[data-state='asking'],
+.stamp[data-state='failed'] {
+	color: var(--faint);
+}
+
+h3 {
+	margin: 0;
+	font: inherit;
+	font-weight: 700;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+}
+
+h3::before {
+	content: '§ ';
+	color: var(--faint);
+}
+
+/* What is known of the subject, as on a form: each name, a run of dots, and what it comes to. */
+/* A fact a line, whatever the width: each has room for what it says. */
+.facts {
+	display: grid;
+	margin: 0 0 18px;
+}
+
+.facts > div {
+	display: flex;
+	align-items: first baseline;
+	gap: 6px;
+	min-width: 0;
+}
+
+.facts dt {
+	flex: none;
+	color: var(--faint);
+}
+
+.facts dt::after {
+	content: ' ';
+}
+
+.facts > div::before {
+	content: '';
+	order: 1;
+	flex: 1;
+	min-width: 12px;
+	border-bottom: 1px dotted var(--faint);
+	opacity: 0.6;
+}
+
+.facts dd {
+	order: 2;
+	flex: 0 1 auto;
+	margin: 0;
+	font-weight: 700;
+	text-align: right;
+	overflow-wrap: anywhere;
+}
+
+.line {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+/* One charge: what the account looks like, how strong the hunch is, and the exhibits either way. */
+.charge {
+	display: grid;
+	gap: 0;
+	padding-bottom: 18px;
+}
+
+.count {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	align-items: center;
+	gap: 0 10px;
+	min-height: 36px;
+}
+
+.reads {
+	font-weight: 700;
+	font-size: 13px;
+}
+
+.how {
+	grid-column: 1 / -1;
+	display: grid;
+	grid-template-columns: minmax(60px, 160px) auto;
+	align-items: center;
+	justify-content: start;
+	gap: 10px;
+	color: var(--faint);
+}
+
+/* Nothing to hang from here, and nothing tilts on a file. */
+.string {
+	display: none;
+}
+
+.label,
+.label:nth-of-type(even) {
+	transform: none;
+}
+
+.bar {
+	position: relative;
+	height: 6px;
+	border-radius: 3px;
+	background: var(--track);
+}
+
+.fill {
+	position: absolute;
+	inset: 0 auto 0 0;
+	border-radius: 3px;
+	background: var(--color, var(--faint));
+}
+
+.tick {
+	position: absolute;
+	top: -3px;
+	bottom: -3px;
+	width: 1px;
+	background: var(--typed);
+}
+
+.tick.current {
+	width: 2px;
+}
+
+/* Two lists, one under the other: what points to it, then what points away, each set in under its heading. */
+.exhibits {
+	display: grid;
+}
+
+.exhibits h4 {
+	margin: 0;
+	color: var(--faint);
+	font: inherit;
+	font-size: 11px;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+}
+
+.exhibits ul {
+	margin: 0;
+	padding: 0 0 0 20px;
+	list-style: none;
+}
+
+.exhibits li {
+	display: grid;
+	grid-template-columns: 24px 1fr;
+}
+
+.exhibits li b {
+	color: var(--faint);
+}
+
+.exhibits li.none {
+	display: block;
+	color: var(--faint);
+}
+
+.foot {
+	display: grid;
+	gap: 0;
+	margin-top: 18px;
+	color: var(--faint);
+	font-size: 11px;
+}
+
+.signature {
+	justify-self: end;
+	color: var(--typed);
+	font-style: italic;
+}
+
+.signature::before {
+	content: '— ';
+}

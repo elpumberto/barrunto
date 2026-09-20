@@ -1,6 +1,6 @@
 import { MatchPattern } from 'wxt/utils/match-patterns';
-import { createQueue, strengthsFor, wordingOf } from '@/engine';
-import type { Answers, Item, Pack, Presented } from '@/engine';
+import { createQueue, strengthsFor, traitsFor, wordingOf } from '@/engine';
+import type { Answers, Item, Pack, Presented, Trait } from '@/engine';
 import { jev, JevError } from '@/jev';
 import type { Analysis, NotAnalyzed } from '@/messages';
 import { packById } from '@/packs';
@@ -71,18 +71,20 @@ export async function analyze(
 		console.error('[barrunto] could not make sense of an item', error);
 		return { analyzed: false, reason: 'malformed' };
 	};
-	let presented;
+	let presented: Presented;
+	let traits: Trait[];
 	try {
 		presented = pack.rules.present(item);
+		traits = traitsFor(pack.rules, item);
 	} catch (error) {
 		return malformed(error);
 	}
 
-	const of = { packId: pack.id, wording: wordingOf(pack.rules.traits), itemId: String(item.id) };
+	const of = { packId: pack.id, wording: wordingOf(traits), itemId: String(item.id) };
 	const stored = await storedAnswers(of);
 	const asked: Asked = stored
 		? { answers: stored }
-		: await askOnce(key, pack, presented, of, urgent);
+		: await askOnce(key, pack, { presented, traits }, of, urgent);
 	if ('failure' in asked) return { analyzed: false, reason: asked.failure };
 	const { answers } = asked;
 	try {
@@ -99,7 +101,7 @@ export async function analyze(
 function askOnce(
 	key: string,
 	pack: Pack,
-	presented: Presented,
+	about: { presented: Presented; traits: Trait[] },
 	of: AnswersOf,
 	urgent: boolean
 ): Promise<Asked> {
@@ -107,7 +109,7 @@ function askOnce(
 	let pending = asking.get(name);
 	if (pending && urgent) queue.hurry(name);
 	if (!pending) {
-		pending = ask(key, pack, presented, of, { name, urgent }).finally(() => asking.delete(name));
+		pending = ask(key, pack, about, of, { name, urgent }).finally(() => asking.delete(name));
 		asking.set(name, pending);
 	}
 	return pending;
@@ -116,8 +118,8 @@ function askOnce(
 /** Jev's answers, stored and counted; or, if the call fails, the reason, noted in the connection status. */
 async function ask(
 	key: string,
-	{ id, rules }: Pack,
-	presented: Presented,
+	{ id }: Pack,
+	{ presented, traits }: { presented: Presented; traits: Trait[] },
 	of: AnswersOf,
 	turn: { name: string; urgent: boolean }
 ): Promise<Asked> {
@@ -130,7 +132,7 @@ async function ask(
 			const reason = await whyNot(key, id);
 			if (reason) throw new NoLongerWanted(reason);
 			call = ++callsMade;
-			return jev.ask(key, presented, rules.traits);
+			return jev.ask(key, presented, traits);
 		}, turn);
 	} catch (error) {
 		if (error instanceof NoLongerWanted) return { failure: error.reason };

@@ -1,7 +1,8 @@
 import { browser } from 'wxt/browser';
+import { sitesOf } from '@/engine';
 import type { Pack } from '@/engine';
-import { packs } from '@/packs';
-import { changePack, settings } from '@/storage';
+import { packById, packs } from '@/packs';
+import { ASKED_FOR_MS, askedFor, changePack, settings } from '@/storage';
 import { takingTurns } from '@/storage/in-turn';
 
 /** The name Chrome keeps the content script under, and where the build leaves it. */
@@ -34,20 +35,28 @@ export function keepPacksCurrent() {
 }
 
 /**
- * Chrome's question can outlive the popup that asked it, so the answer is taken here. Leave is given
- * back whenever a pack is turned off, so a pack that has it is one the user wants on. Chrome may
- * word the sites its own way: what counts is whether it now holds leave for them, not how it says so.
+ * Chrome's question can outlive the popup that asked it, so the answer is taken here. Chrome says
+ * which sites leave arrived for, in words of its own, and not which pack it was asked for: two packs
+ * may act on the same site, so the popup notes the pack before asking, and only that one is turned
+ * on. Leave that arrives with nobody having asked, given from Chrome's own pages, turns nothing on:
+ * the pack's switch is there for that, and Chrome has no question left to ask.
  */
 async function turnOnWhatGotLeave() {
-	for (const pack of packs) {
-		if (await hasLeave(pack)) await changePack(pack, () => ({ enabled: true }));
+	const asked = await askedFor.getValue();
+	// A note left by a question that was turned down says nothing of leave that arrives long after.
+	const fresh = asked !== null && Date.now() - asked.at < ASKED_FOR_MS;
+	const pack = fresh ? packById(asked.packId) : undefined;
+	if (asked && !fresh) await askedFor.removeValue();
+	if (pack && (await hasLeave(pack))) {
+		await askedFor.removeValue();
+		await changePack(pack, () => ({ enabled: true }));
 	}
 	await sync();
 }
 
 function sync(): Promise<void> {
 	return inTurn(async () => {
-		const sites = (await packsOn()).flatMap((pack) => pack.sites);
+		const sites = sitesOf(await packsOn());
 
 		// Only when the sites change: taking the script down and up again would miss a page loading meanwhile.
 		const [registered] = await browser.scripting.getRegisteredContentScripts({ ids: [SCRIPT.id] });
@@ -72,7 +81,7 @@ function sync(): Promise<void> {
  */
 export async function reachOpenTabs() {
 	await sync();
-	await reach((await packsOn()).flatMap((pack) => pack.sites));
+	await reach(sitesOf(await packsOn()));
 }
 
 /**

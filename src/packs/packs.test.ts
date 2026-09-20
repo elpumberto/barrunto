@@ -1,13 +1,26 @@
 import { describe, expect, it } from 'vitest';
 import { SENSITIVITIES } from '@/engine';
 import { packs } from '.';
-import { pages } from './pages';
+import { cards, pages } from './pages';
 
 describe('the packs', () => {
-	it('have a name of their own each, and a half that reads the page', () => {
+	it('have a name of their own each, and one half that reads the page: its items, or the one thing it is about', () => {
 		const ids = packs.map((pack) => pack.id);
 		expect(new Set(ids).size).toBe(ids.length);
-		expect(Object.keys(pages).sort()).toEqual([...ids].sort());
+		expect([...Object.keys(pages), ...Object.keys(cards)].sort()).toEqual([...ids].sort());
+	});
+
+	it('have the words of a card exactly when their page half shows one: a charge for each judgment, and a line for whatever may count in one', () => {
+		for (const pack of packs) {
+			expect(Boolean(pack.card), pack.id).toBe(Boolean(cards[pack.id]));
+			if (!pack.card) continue;
+			const { judgments } = pack.rules;
+			expect(Object.keys(pack.card.charges).sort()).toEqual(judgments.map((j) => j.id).sort());
+			const counted = new Set(
+				judgments.flatMap((j) => j.recipe.map((ingredient) => ingredient.id))
+			);
+			expect(Object.keys(pack.card.evidence).sort()).toEqual([...counted].sort());
+		}
 	});
 
 	it('say that they read what the user writes exactly when their page half does', () => {
@@ -16,15 +29,13 @@ describe('the packs', () => {
 		}
 	});
 
-	it('act on sites Chrome can be asked leave for, and on no site of another pack', () => {
+	it('act on sites Chrome can be asked leave for', () => {
 		for (const pack of packs) {
 			expect(pack.sites.length).toBeGreaterThan(0);
-			for (const site of pack.sites) {
-				// A whole site, named outright: the simplest thing Chrome can be asked leave for.
-				expect(site).toMatch(/^https:\/\/[^/*]+\/\*$/);
-				const others = packs.filter((other) => other !== pack).flatMap((other) => other.sites);
-				expect(others).not.toContain(site);
-			}
+			expect(new Set(pack.sites).size).toBe(pack.sites.length);
+			// A whole site, named outright: the simplest thing Chrome can be asked leave for. Two packs
+			// may name the same one: each is turned on and off by itself.
+			for (const site of pack.sites) expect(site).toMatch(/^https:\/\/[^/*]+\/\*$/);
 		}
 	});
 
