@@ -1,8 +1,10 @@
 // Loads the built extension into a headless Chrome and walks the whole path once, with no network:
 // a bad key, a good key, a pack turned on in the popup's catalogue, a made-up x.com page, labels on
 // the posts that dwell, a change of sensitivity in the popup opened over the page reaching it,
-// counters, a post of the user's own read as they write it; then a made-up Hacker News thread,
-// left alone while its pack is off and labelled without a reload once it is turned on.
+// counters, a post of the user's own read as they write it; a made-up profile with a second pack on
+// the same site, each doing its part and each turned off without taking the other down; then a
+// made-up Hacker News thread, left alone while its pack is off and labelled without a reload once
+// it is turned on.
 // It needs the stand-in build, which also holds leave for every pack's site: `npm run smoke`.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -15,8 +17,12 @@ const ON_SCREEN = 5;
 const COMMENTS = 9;
 const AHEAD = 2;
 const DRAFTS = 1;
+/** The posts on a made-up profile, short enough to be all on screen under the header and the case file. */
+const PROFILE_POSTS = 5;
 /** How many of the made-up comments fit the screen: the story's title takes a little of it. */
 const IN_SIGHT = 5;
+/** Chrome cuts a popup at this height, in pixels, and Barrunto's does not scroll. */
+const MOST_POPUP = 600;
 
 const background = await readFile(`${EXTENSION}/background.js`, 'utf8');
 assert.ok(
@@ -38,6 +44,49 @@ const post = (
 const composer = `<div style="position:fixed;right:0;bottom:0;width:300px;display:flex"><div><div data-testid="UserAvatar-Container-me"></div></div>
 	<div id="draft"><div contenteditable="true" data-testid="tweetTextarea_0" style="min-height:20px"></div></div></div>`;
 const home = `<!doctype html><body style="margin:0;background:#fff">${Array.from({ length: POSTS }, (_, n) => post(n)).join('')}${composer}</body>`;
+
+// A profile as X.com has it: the header with the name over the
+// handle, the tabs right after it, the posts after those, and what X.com tells search engines in the head.
+const profilePost = (handle, n) =>
+	`<div data-testid="cellInnerDiv"><div><div><article data-testid="tweet" style="position:relative;height:60px">
+	<div data-testid="User-Name"><div><a href="/${handle}"><span><span>Made Up</span></span></a></div>
+		<div><a href="/${handle}"><span>@${handle}</span></a><a href="/${handle}/status/${n}"><time datetime="2026-01-0${(n % 9) + 1}T10:00:00.000Z">1d</time></a></div></div>
+	<div><div data-testid="tweetText"><span>Made-up post number ${n} of a profile, with a few words in it.</span></div>
+		<div role="group"><button data-testid="reply" aria-label="2 Replies. Reply"></button>
+			<button data-testid="retweet" aria-label="3 reposts. Repost"></button>
+			<button data-testid="like" aria-label="9 Likes. Like"></button></div></div></article></div></div></div>`;
+const profileData = (handle) =>
+	JSON.stringify({
+		'@type': 'ProfilePage',
+		dateCreated: '2025-12-20T00:00:00.000Z',
+		mainEntity: {
+			additionalName: handle,
+			interactionStatistic: [
+				{ name: 'Follows', userInteractionCount: 12 },
+				{ name: 'Friends', userInteractionCount: 900 },
+				{ name: 'Tweets', userInteractionCount: 40 }
+			]
+		}
+	});
+const profileColumn = (
+	handle,
+	firstPost
+) => `<div aria-label="Home timeline"><div><h2>Made Up</h2><div dir="ltr">40 posts</div></div><div></div>
+	<div><div><div>
+		<div class="header"><div style="height:40px"></div><div>
+			<div data-testid="UserName"><div><div><div><div><div><div dir="ltr"><span><span>Made Up</span><span></span></span></div></div></div>
+				<div><div tabindex="-1"><div><div dir="ltr"><span>@${handle}</span></div></div></div></div></div></div></div></div>
+			<div><div data-testid="UserDescription" dir="auto"><span>A made-up bio, with a few words in it.</span></div></div>
+			<div><div><a href="/${handle}/following"><span><span>900</span></span></a></div><div><a href="/${handle}/verified_followers"><span><span>12</span></span></a></div></div></div></div>
+		<div><nav aria-label="Profile timelines"><div><div role="tablist"><div role="presentation"><a role="tab" href="/${handle}">Posts</a></div>
+			<div role="presentation"><a role="tab" href="/${handle}/with_replies">Replies</a></div></div></div></nav></div>
+		<section role="region">${Array.from({ length: PROFILE_POSTS }, (_, n) => profilePost(handle, firstPost + n)).join('')}</section>
+	</div></div></div></div>`;
+const profile = (
+	handle,
+	firstPost
+) => `<!doctype html><head><script type="application/ld+json">${profileData(handle)}</script></head>
+	<body style="margin:0;background:#fff"><main><div data-testid="primaryColumn">${profileColumn(handle, firstPost)}</div></main></body>`;
 
 const comment = (
 	n
@@ -133,7 +182,12 @@ try {
 		const real = await opened.asPage();
 		real.on('pageerror', (error) => errors.push(`popup over the page: ${error.message}`));
 		await real.waitForSelector('.eyebrow');
-		assert.match(await real.$eval('.eyebrow', (el) => el.textContent), pack);
+		// Where two packs act on the page, the one shown is the one of the two that is marked.
+		const shown = await real.$eval(
+			'.eyebrow',
+			(el) => (el.querySelector('[aria-pressed="true"]') ?? el).textContent
+		);
+		assert.match(shown, pack);
 		await act(real);
 		await real.close().catch(() => {});
 	};
@@ -142,7 +196,12 @@ try {
 	page.on('pageerror', (error) => errors.push(`page: ${error.message}`));
 	await page.setViewport({ width: 700, height: 160 * ON_SCREEN });
 	await page.setRequestInterception(true);
-	const SITES = { 'https://x.com/': home, 'https://news.ycombinator.com/': thread };
+	const SITES = {
+		'https://x.com/ada_nobody': profile('ada_nobody', 3000),
+		'https://x.com/bob_noone': profile('bob_noone', 4000),
+		'https://x.com/': home,
+		'https://news.ycombinator.com/': thread
+	};
 	page.on('request', (request) => {
 		const body = Object.entries(SITES).find(([site]) => request.url().startsWith(site))?.[1];
 		return body ? request.respond({ contentType: 'text/html', body }) : request.abort();
@@ -173,7 +232,20 @@ try {
 	// A change of sensitivity in the popup reaches the page and repaints it without asking again.
 	const onMedium = (await labelsOnPage(page)).flat().length;
 	await page.bringToFront();
-	await overThePage(/^X$/, (real) => real.click('[data-action="sensitivity"][data-value="ultra"]'));
+	await overThePage(/^X Posts$/, async (real) => {
+		// The popup cannot scroll and Chrome cuts it at 600 px: at its tallest, with the usage unfolded
+		// over the pack with most controls, it has to fit.
+		await real.click('[data-fold="usage"] summary');
+		assert.equal(
+			(await real.$$('[data-action="pick"]')).length,
+			2,
+			'both packs of X.com are named'
+		);
+		const tall = await real.$eval('#popup', (el) => el.offsetHeight);
+		console.log('the popup at its tallest:', tall, 'px');
+		assert.ok(tall <= MOST_POPUP, `the popup fits Chrome's window: ${tall} px`);
+		await real.click('[data-action="sensitivity"][data-value="ultra"]');
+	});
 	await page.bringToFront();
 	await page.waitForFunction(
 		(before) =>
@@ -207,8 +279,154 @@ try {
 	await popup.bringToFront();
 	assert.equal(await analyzed(), ON_SCREEN + DRAFTS, 'the draft is asked about once');
 
+	// Two packs on one site. On a profile each does its part: one labels the posts, the other opens a
+	// case file on the account, asked about once. What the popup gives back to Chrome is watched.
+	await popup.evaluate(() => {
+		window.givenBack = [];
+		const giveBack = chrome.permissions.remove.bind(chrome.permissions);
+		chrome.permissions.remove = (leave, ...rest) => {
+			window.givenBack.push(...leave.origins);
+			return giveBack(leave, ...rest);
+		};
+	});
+	const givenBack = () => popup.evaluate(() => window.givenBack);
+	await turnOn('jetective');
+	// The catalogue cannot scroll either: unfolded over the pack that tells of most labels, it has to fit.
+	await popup.click('[data-action="packs"]');
+	await popup.click('[data-action="about"][data-pack="jetective"]');
+	const catalogue = await popup.$eval('#popup', (el) => el.offsetHeight);
+	console.log('the catalogue at its tallest:', catalogue, 'px');
+	assert.ok(catalogue <= MOST_POPUP, `the catalogue fits Chrome's window: ${catalogue} px`);
+	await popup.click('[data-action="about"][data-pack="jetective"]');
+	await popup.click('[data-action="home"]');
+	assert.deepEqual(
+		await registered(),
+		['https://x.com/*'],
+		'a site two packs act on is named once'
+	);
+	await page.bringToFront();
+	// A case file is tall: the screen is made tall enough for the posts of the profile to show under it.
+	await page.setViewport({ width: 700, height: 1600 });
+	await page.goto('https://x.com/ada_nobody');
+	const caseFile = (handle) =>
+		page.waitForFunction(
+			(handle) => {
+				const file = document.querySelector('.header > [data-barrunto="card"]')?.shadowRoot;
+				const whose = [...(file?.querySelectorAll('.facts dd') ?? [])].map(
+					(fact) => fact.textContent
+				);
+				return whose.includes(`@${handle}`) && !file.querySelector('.waiting')
+					? [...file.querySelectorAll('.stamp, .line, .reads')].map((said) => said.textContent)
+					: null;
+			},
+			{ timeout: 10000 },
+			handle
+		);
+	console.log('the case file:', await (await caseFile('ada_nobody')).jsonValue());
+	await waitForLooked('[data-testid="cellInnerDiv"] > div > div', PROFILE_POSTS);
+	await overThePage(/^X Posts$/, async (real) => {
+		await real.click('[data-action="pick"][data-pack="jetective"]');
+		await real.waitForSelector('[data-pack="jetective"][aria-pressed="true"]');
+		await real.click('[data-fold="usage"] summary');
+		const tall = await real.$eval('#popup', (el) => el.offsetHeight);
+		assert.ok(tall <= MOST_POPUP, `the popup fits over the other pack too: ${tall} px`);
+		assert.equal(
+			await real.$('[data-action="drafts"], #ahead'),
+			null,
+			'a pack shows only its own controls: no drafts to check, nothing to read ahead'
+		);
+		await real.click('[data-action="sensitivity"][data-pack="jetective"][data-value="ultra"]');
+	});
+	// Each pack has a sensitivity of its own, and moving it reaches the case file without asking again.
+	await page.bringToFront();
+	await page.waitForFunction(
+		() =>
+			document
+				.querySelector('.header > [data-barrunto="card"]')
+				.shadowRoot.querySelector('.charge'),
+		{ timeout: 5000 }
+	);
+	await popup.bringToFront();
+	let counted = ON_SCREEN + DRAFTS + PROFILE_POSTS + 1;
+	assert.equal(
+		await analyzed(),
+		counted,
+		'the posts of the profile are asked about, and the account once'
+	);
+
+	// X.com goes from one profile to another without loading a page: the case file follows.
+	await page.bringToFront();
+	await page.evaluate(
+		(column) => {
+			history.pushState({}, '', '/bob_noone/with_replies');
+			document.querySelector('script[type="application/ld+json"]').remove();
+			document.querySelector('[data-testid="primaryColumn"]').innerHTML = column;
+		},
+		profileColumn('bob_noone', 4000)
+	);
+	await caseFile('bob_noone');
+	await waitForLooked('[data-testid="cellInnerDiv"] > div > div', PROFILE_POSTS);
+	await popup.bringToFront();
+	counted += PROFILE_POSTS + 1;
+	assert.equal(
+		await analyzed(),
+		counted,
+		'and so is the next profile, gone to with no page loaded'
+	);
+
+	// Either pack turned off leaves the other at work, and with Chrome's leave for the site they share.
+	const flipTo = async (pack, to) => {
+		await popup.bringToFront();
+		await popup.click('[data-action="packs"]');
+		await popup.click(`[data-action="enable"][data-pack="${pack}"]`);
+		await popup.waitForSelector(
+			`[data-action="enable"][data-pack="${pack}"][aria-checked="${to}"]`
+		);
+		await popup.click('[data-action="home"]');
+	};
+	const onProfile = () =>
+		page.evaluate(() => ({
+			file: document.querySelector('.header > [data-barrunto="card"]') !== null,
+			labels: document.querySelectorAll('[data-barrunto="labels"]').length
+		}));
+	await page.bringToFront();
+	const labelled = (await onProfile()).labels;
+	assert.ok(labelled > 0, 'some posts of the profile get a label on ultra');
+	await flipTo('jetective', false);
+	await page.bringToFront();
+	await page.waitForFunction(() => !document.querySelector('.header > [data-barrunto="card"]'));
+	assert.deepEqual(
+		await onProfile(),
+		{ file: false, labels: labelled },
+		'the posts keep their labels'
+	);
+	assert.deepEqual(await givenBack(), [], 'leave for the site stays while the other pack needs it');
+	assert.deepEqual(await registered(), ['https://x.com/*']);
+	await flipTo('jetective', true);
+	await page.bringToFront();
+	await caseFile('bob_noone');
+	await flipTo('x', false);
+	assert.deepEqual(await givenBack(), [], 'whichever of the two is turned off');
+	assert.deepEqual(await registered(), ['https://x.com/*']);
+	await page.bringToFront();
+	await page.reload();
+	await caseFile('bob_noone');
+	await new Promise((resolve) => setTimeout(resolve, 1500));
+	assert.deepEqual(
+		await onProfile(),
+		{ file: true, labels: 0 },
+		'the case file needs no other pack'
+	);
+	await flipTo('jetective', false);
+	assert.deepEqual(await givenBack(), ['https://x.com/*'], 'the last pack off gives the site back');
+	assert.deepEqual(await registered(), [], 'and the script runs nowhere');
+	await flipTo('x', true);
+	await popup.bringToFront();
+	assert.equal(await analyzed(), counted, 'answers are kept: nothing was asked twice');
+
 	// A pack that is off acts nowhere; turned on, it reads its own site with its own labels.
 	await page.bringToFront();
+	await page.setViewport({ width: 700, height: 160 * ON_SCREEN });
 	await page.goto('https://news.ycombinator.com/item?id=1');
 	assert.deepEqual(
 		await registered(),
@@ -255,7 +473,7 @@ try {
 	await popup.bringToFront();
 	assert.equal(
 		await analyzed(),
-		ON_SCREEN + DRAFTS + IN_SIGHT + AHEAD,
+		counted + IN_SIGHT + AHEAD,
 		'the comments in sight and the ones read ahead are counted with the posts, and no others'
 	);
 

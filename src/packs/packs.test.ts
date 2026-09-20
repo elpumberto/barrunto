@@ -1,13 +1,26 @@
 import { describe, expect, it } from 'vitest';
 import { SENSITIVITIES } from '@/engine';
 import { packs } from '.';
-import { pages } from './pages';
+import { cards, pages } from './pages';
 
 describe('the packs', () => {
-	it('have a name of their own each, and a half that reads the page', () => {
+	it('have a name of their own each, and one half that reads the page: its items, or the one thing it is about', () => {
 		const ids = packs.map((pack) => pack.id);
 		expect(new Set(ids).size).toBe(ids.length);
-		expect(Object.keys(pages).sort()).toEqual([...ids].sort());
+		expect([...Object.keys(pages), ...Object.keys(cards)].sort()).toEqual([...ids].sort());
+	});
+
+	it('have the words of a card exactly when their page half shows one: a charge for each judgment, and a line for whatever may count in one', () => {
+		for (const pack of packs) {
+			expect(Boolean(pack.card), pack.id).toBe(Boolean(cards[pack.id]));
+			if (!pack.card) continue;
+			const { judgments } = pack.rules;
+			expect(Object.keys(pack.card.charges).sort()).toEqual(judgments.map((j) => j.id).sort());
+			const counted = new Set(
+				judgments.flatMap((j) => j.recipe.map((ingredient) => ingredient.id))
+			);
+			expect(Object.keys(pack.card.evidence).sort()).toEqual([...counted].sort());
+		}
 	});
 
 	it('say that they read what the user writes exactly when their page half does', () => {

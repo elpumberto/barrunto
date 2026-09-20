@@ -166,10 +166,15 @@ function analysis(state: PopupState): string {
 			? `<div class="inline"><div><div class="title">${texts.drafts.title}</div><p class="help">${texts.drafts.help}</p></div>
 			${toggle('drafts', settings.checkDrafts, texts.drafts.title)}</div>`
 			: '';
+	// A pack that shows a card reads one thing per page, and has nothing to read ahead: how far ahead
+	// the other packs read is theirs to show.
+	const ahead = pack?.card
+		? ''
+		: `<div class="inline"><div><label class="title" for="ahead">${texts.ahead.title}</label><p class="help" id="ahead-help">${texts.ahead.help}</p></div>
+			<input id="ahead" class="field count" type="number" min="0" max="${MOST_AHEAD}" step="1" value="${Number(settings.lookAhead) || 0}" title="${texts.ahead.none}" aria-describedby="ahead-help" /></div>`;
 	return `<section class="row">${nameOf(state, pack)}
 		${ofThisPage}
-		<div class="inline"><div><label class="title" for="ahead">${texts.ahead.title}</label><p class="help" id="ahead-help">${texts.ahead.help}</p></div>
-			<input id="ahead" class="field count" type="number" min="0" max="${MOST_AHEAD}" step="1" value="${Number(settings.lookAhead) || 0}" title="${texts.ahead.none}" aria-describedby="ahead-help" /></div>
+		${ahead}
 		${drafts}
 		<div class="inline"><div><div class="title">${texts.tuning.title}</div><p class="help">${texts.tuning.help}</p></div>
 			${toggle('tuning', settings.tuning, texts.tuning.title)}</div></section>`;

@@ -1,7 +1,8 @@
 import { defineContentScript } from 'wxt/utils/define-content-script';
 import { MatchPattern } from 'wxt/utils/match-patterns';
 import { packs } from '@/packs';
-import { pages } from '@/packs/pages';
+import { cards, pages } from '@/packs/pages';
+import { watchCards } from './cards';
 import { watchDrafts } from './drafts';
 import { watchPage } from './watch';
 
@@ -17,8 +18,10 @@ export default defineContentScript({
 		for (const pack of packs) {
 			if (!pack.sites.some((site) => new MatchPattern(site).includes(location.href))) continue;
 			const page = pages[pack.id];
+			const card = cards[pack.id];
 			if (page) watchPage(ctx, pack, page).catch(failed);
 			if (page?.drafts) watchDrafts(ctx, pack, page.drafts).catch(failed);
+			if (card) watchCards(ctx, pack, card).catch(failed);
 		}
 	}
 });

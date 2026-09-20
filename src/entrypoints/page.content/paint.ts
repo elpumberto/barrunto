@@ -1,5 +1,7 @@
 import { SENSITIVITIES } from '@/engine';
 import type { Judgment, LabelPlace, Sensitivity, Treatment } from '@/engine';
+import type { Card, Charge, Headings } from './card';
+import cardCss from './card.css?inline';
 import draftCss from './draft.css?inline';
 import foldCss from './fold.css?inline';
 import type { Ground } from './ground';
@@ -400,4 +402,115 @@ export function paintDraft(anchor: HTMLElement, hunch: Hunch, ground: Ground): v
 		}
 	}
 	root.append(box);
+}
+
+/** One judgment on a card: what it reads as, how strong the hunch is, and what pushed it, and under that what held it back. */
+function chargeNode(charge: Charge, headings: Headings, sensitivity: Sensitivity): HTMLElement {
+	const { judgment } = charge;
+	const block = el('div', 'charge');
+	block.dataset.id = judgment.id;
+	block.style.setProperty('--color', judgment.label.color);
+	const how = el('div', 'how');
+	how.append(
+		bar(charge.strength, { thresholds: judgment.thresholds, current: sensitivity }),
+		el('span', '', charge.hunch)
+	);
+	const count = el('div', 'count');
+	count.append(labelNode(judgment, false), el('span', 'reads', charge.reads), how);
+
+	// Lettered as exhibits are, one run of letters for the whole charge.
+	let lettered = 0;
+	const exhibits = el('div', 'exhibits');
+	for (const [heading, lines] of [
+		[headings.pushed, charge.pushed],
+		[headings.heldBack, charge.heldBack]
+	] as const) {
+		const list = el('ul', '');
+		for (const line of lines) {
+			const exhibit = el('li', '');
+			exhibit.append(el('b', '', String.fromCharCode(65 + (lettered++ % 26))), line);
+			list.append(exhibit);
+		}
+		if (!lines.length) list.append(el('li', 'none', headings.none));
+		const side = el('div', '');
+		side.append(el('h4', '', heading), list);
+		exhibits.append(side);
+	}
+	block.append(count, exhibits);
+	return block;
+}
+
+/** Which of what Barrunto puts at the end of an anchor is there now: the card, the tuning detail. */
+export const paintedIn = (anchor: HTMLElement) => ({
+	card: anchor.querySelector(`:scope > [${MARK}="card"]`) !== null,
+	tuning: anchor.querySelector(`:scope > [${MARK}="tuning"]`) !== null
+});
+
+export function clearCard(anchor: HTMLElement): void {
+	anchor.querySelector(`:scope > [${MARK}="card"]`)?.remove();
+}
+
+/**
+ * Puts at the end of `anchor` the card about what the page is about, in place of the one there. What
+ * it says is text, all of it: the pack's own words, and names and numbers off the page.
+ */
+export function paintCard(
+	anchor: HTMLElement,
+	card: Card,
+	sensitivity: Sensitivity,
+	ground: Ground
+): void {
+	const root = shadowIn(anchor, 'card', labelCss + cardCss);
+	const host = root.host as HTMLElement;
+	host.dataset.ground = ground;
+	// The tuning detail, where there is one, goes under the card, whichever came first.
+	const tuning = anchor.querySelector(`:scope > [${MARK}="tuning"]`);
+	if (tuning && tuning.compareDocumentPosition(host) & Node.DOCUMENT_POSITION_FOLLOWING) {
+		tuning.before(host);
+	}
+	root.querySelector('.file')?.remove();
+
+	const file = el('section', 'file');
+	file.setAttribute('role', 'status');
+	// A click on the card is not a click on the page.
+	file.addEventListener('click', (event) => event.stopPropagation());
+	const tab = el('div', 'tab');
+	// The drawing is Barrunto's own, a file in its code.
+	tab.innerHTML = logo;
+	tab.append(el('span', '', card.title));
+
+	const head = el('div', 'head');
+	const stamp = el('span', 'stamp', card.stamp);
+	stamp.dataset.state = card.state === 'told' && card.charges.length ? 'charged' : card.state;
+	head.append(el('span', 'letterhead', card.letterhead), stamp);
+
+	const facts = el('dl', 'facts');
+	for (const { name, value } of card.facts) {
+		const fact = el('div', '');
+		fact.append(el('dt', '', name), el('dd', '', value));
+		facts.append(fact);
+	}
+
+	const paper = el('div', 'paper');
+	paper.append(head, el('h3', '', card.subject), facts, el('h3', '', card.findings));
+	if (card.state === 'asking') {
+		const line = el('div', 'line');
+		line.append(waitingNode(), card.asking);
+		paper.append(line);
+	} else if (card.state === 'failed') {
+		paper.append(el('div', 'line', `Not looked into: ${card.reason}.`));
+	} else {
+		if (!card.charges.length) paper.append(el('div', 'line', card.nothing));
+		for (const charge of card.charges) {
+			paper.append(chargeNode(charge, card.headings, sensitivity));
+		}
+	}
+
+	const foot = el('div', 'foot');
+	foot.append(el('span', 'caveat', card.caveat), el('span', 'signature', card.signature));
+	paper.append(foot);
+	const sheet = el('div', 'sheet');
+	sheet.append(paper);
+	file.append(tab, sheet);
+	root.append(file);
 }

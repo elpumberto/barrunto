@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { pack as hn } from '@/packs/hn';
+import { pack as jetective } from '@/packs/jetective';
 import { pack as x } from '@/packs/x';
 import { closedForm, compact, renderPopup } from './view';
 import type { PopupActions, PopupState } from './view';
@@ -306,11 +307,11 @@ describe('two packs on one page', () => {
 	it('names both where one page has two, with which is on, and a page with one as ever', () => {
 		draw({});
 		expect(picks()).toEqual([]);
-		expect(root.querySelector('.eyebrow')!.textContent).toBe('X');
+		expect(root.querySelector('.eyebrow')!.textContent).toBe('X Posts');
 
 		draw(both);
 		expect(picks().map((pick) => [pick.textContent, pick.dataset.on])).toEqual([
-			['X', 'true'],
+			['X Posts', 'true'],
 			['People', 'false']
 		]);
 	});
@@ -325,14 +326,24 @@ describe('two packs on one page', () => {
 		click('[data-action="pick"][data-pack="x"]');
 		expect(actions.pick).toHaveBeenCalledWith('x');
 		draw({ ...both, picked: 'x', settings: { ...connected.settings, packs: onlyPeople } });
-		expect(shown()).toBe('X');
+		expect(shown()).toBe('X Posts');
 		expect(root.querySelector('.stops')).toBeNull();
 		expect(root.querySelector<HTMLElement>('[data-action="enable"]')!.dataset.pack).toBe('x');
 	});
 
+	it('shows how far ahead it reads only over a pack that reads items, not over one that shows a card', () => {
+		const leave = { x: true, jetective: true };
+		const onX = { here: [x, jetective], packs: [x, jetective, hn], leave };
+		draw(onX);
+		expect(root.querySelector('#ahead')).not.toBeNull();
+		draw({ ...onX, picked: 'jetective' });
+		expect(root.querySelector('#ahead')).toBeNull();
+		expect(root.querySelector('[data-action="tuning"]')).not.toBeNull();
+	});
+
 	it('shows the first while none is on', () => {
 		draw({ ...both, settings: { ...connected.settings, packs: {} } });
-		expect(shown()).toBe('X');
+		expect(shown()).toBe('X Posts');
 		expect(root.querySelector<HTMLElement>('[data-action="enable"]')!.dataset.pack).toBe('x');
 	});
 });

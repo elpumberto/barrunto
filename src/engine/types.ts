@@ -145,6 +145,58 @@ export interface Pack<I extends Item = Item> {
 	rules: Rules<I>;
 	/** Whether its page half reads what the user writes on the site too; see `DraftsHalf`. */
 	readsDrafts?: boolean;
+	/** The words of its card, for a pack that reads one thing per page and not many; see `CardHalf`. */
+	card?: CardTexts<I>;
+}
+
+/**
+ * A sentence that carries what was counted for this item, as how many of its posts Jev took for
+ * adverts; or nothing, where what was counted comes to nothing worth telling.
+ */
+export interface Counted<I extends Item = Item> {
+	say(item: I, answers: Answers): string;
+}
+
+/**
+ * What a card says around its judgments. The words are the pack's, constants in its code: nothing
+ * is written for the occasion, by Jev or by anyone. The card that shows them is the painter's.
+ */
+export interface CardTexts<I extends Item = Item> {
+	/** Whose card it is: what goes across its top, and what it is signed with at the foot. */
+	letterhead: string;
+	signature: string;
+	/** What tells this card from another, such as a case number. Shown as text, never as markup. */
+	title(item: I): string;
+	/** What is stamped on it: while Jev is asked, when something clears, and when nothing does. */
+	stamps: { asking: string; charged: string; clear: string };
+	/**
+	 * What the page says of the item with nobody asked, under a heading: each a name and what it
+	 * comes to, as text. Facts, laid out for the reader: they are not the evidence of any judgment.
+	 */
+	subject: string;
+	facts(item: I): { name: string; value: string }[];
+	/** What goes over the judgments. */
+	findings: string;
+	/** While Jev is being asked. */
+	asking: string;
+	/** When no judgment clears its threshold. */
+	nothing: string;
+	/** What every card ends with: what it is drawn from, and how little it settles. */
+	caveat: string;
+	/** How each judgment reads on the card, by judgment id. */
+	charges: Record<string, string>;
+	/** How strong a hunch is, in words. */
+	hunches: { faint: string; fair: string; strong: string };
+	/** What goes over the ingredients that pushed a judgment, and over the ones that held it back. */
+	pushed: string;
+	heldBack: string;
+	/** What goes under one of those two when nothing did. */
+	none: string;
+	/**
+	 * How each trait and page signal reads when it is there, by id, whichever way it weighs: a
+	 * sentence, or what makes one of what was counted.
+	 */
+	evidence: Record<string, string | Counted<I>>;
 }
 
 /** An item as read, the reason in words it is not for analyzing, or nothing when the page is not understood. */
@@ -199,4 +251,34 @@ export interface DraftsHalf<I extends Item = Item> {
 	read(box: HTMLElement): Reading<I>;
 	/** The element the hunch about it goes at the end of. */
 	anchor(box: HTMLElement): HTMLElement;
+}
+
+/**
+ * The half of a pack that reads one thing per page, such as whose profile it is, and says where the
+ * card about it goes. A site that draws its pages piece by piece, and goes from one to another
+ * without loading anything, is waited for: the question is asked when there is enough to go by,
+ * and again only if the half says the page has since shown much more.
+ */
+export interface CardHalf<I extends Item = Item> {
+	/**
+	 * What the page at this address is about, by a name that stays the same while it is about the
+	 * same thing; or null where the pack has nothing to read. Cheap enough to ask on every change
+	 * of the page.
+	 */
+	subjectOf(address: string): string | null;
+	/** Reads it. Null while the page does not show it yet, or still shows what it showed before. */
+	read(root: ParentNode, subject: string): Reading<I>;
+	/**
+	 * Whether what has been read is worth asking about. `settled` says the page has stopped changing:
+	 * what is not ready by then is not asked about at all.
+	 */
+	ready(item: I, settled: boolean): boolean;
+	/**
+	 * Whether what is read now is so much more than what was asked about that it is worth asking
+	 * again, as when the user has gone down the page and it has shown more. The item then has to
+	 * have another id: the answers are kept under it.
+	 */
+	again?(item: I, asked: I): boolean;
+	/** The element the card goes at the end of, once the page has it. */
+	anchor(root: ParentNode): HTMLElement | null;
 }
