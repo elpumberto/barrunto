@@ -18,8 +18,10 @@ export interface PopupState {
 	settings: Settings;
 	/** The packs there are. */
 	packs: Pack[];
-	/** The pack of the page the popup was opened over, on or off, if there is one. */
-	pack: Pack | null;
+	/** The packs of the page the popup was opened over, on or off: two may act on one site. */
+	here: Pack[];
+	/** Which of them the popup is showing, by id, once the user has picked one. */
+	picked: string | null;
 	/** For each pack, by id, whether Chrome holds the user's leave for its sites. A pack is on when it is wanted and has it. */
 	leave: Record<string, boolean>;
 	/** Which view is up: the home view, which is about this page, or the catalogue of packs. */
@@ -59,6 +61,8 @@ export interface PopupActions extends PackActions {
 	setCheckDrafts(checkDrafts: boolean): void;
 	resetCounters(): void;
 	go(view: PopupState['view']): void;
+	/** Shows another pack of this page. */
+	pick(packId: string): void;
 	/** Unfolds what a pack is about, or folds it back if it was the one unfolded. */
 	showAbout(packId: string): void;
 	setEnabled(packId: string, on: boolean): void;
@@ -112,11 +116,38 @@ function keyForm({ form, connection }: PopupState, canCancel: boolean): string {
 	</form>`;
 }
 
+/** Whether a pack is on: the user wants it, and Chrome holds their leave for its sites. */
+const isOn = ({ settings, leave }: PopupState, pack: Pack) =>
+	Boolean(settings.packs[pack.id]?.enabled && leave[pack.id]);
+
+/** The pack of this page the popup shows: the one picked, or the first that is on, or the first. */
+export const shownPack = (state: PopupState): Pack | null =>
+	state.here.find((pack) => pack.id === state.picked) ??
+	state.here.find((pack) => isOn(state, pack)) ??
+	state.here[0] ??
+	null;
+
+/**
+ * What the block about this page is called: its pack. Where two packs act on the page, their names
+ * are the way from one to the other, in the same line: the popup has no room for one more.
+ */
+function nameOf(state: PopupState, shown: Pack | null): string {
+	if (!shown) return `<div class="eyebrow">${texts.analysis}</div>`;
+	if (state.here.length < 2) return `<div class="eyebrow">${shown.name}</div>`;
+	const picks = state.here.map(
+		(pack) =>
+			`<button type="button" data-action="pick" data-pack="${pack.id}" data-on="${isOn(state, pack)}" aria-pressed="${pack === shown}">${pack.name}</button>`
+	);
+	return `<div class="eyebrow picks" role="group" aria-label="${texts.packs.here}">${picks.join('')}</div>`;
+}
+
 /**
  * How things are analyzed on this page: the controls of its pack while it is on, the offer to turn
  * it on while it is off, how far ahead of the user it reads, and the tuning mode.
  */
-function analysis({ settings, pack, leave, packs }: PopupState): string {
+function analysis(state: PopupState): string {
+	const { settings, leave, packs } = state;
+	const pack = shownPack(state);
 	const chosen = pack && packSettingsOf(pack, settings.packs[pack.id]);
 	const anyOn = packs.some((p) => settings.packs[p.id]?.enabled && leave[p.id]);
 	let ofThisPage: string;
@@ -135,7 +166,7 @@ function analysis({ settings, pack, leave, packs }: PopupState): string {
 			? `<div class="inline"><div><div class="title">${texts.drafts.title}</div><p class="help">${texts.drafts.help}</p></div>
 			${toggle('drafts', settings.checkDrafts, texts.drafts.title)}</div>`
 			: '';
-	return `<section class="row"><div class="eyebrow">${pack ? pack.name : texts.analysis}</div>
+	return `<section class="row">${nameOf(state, pack)}
 		${ofThisPage}
 		<div class="inline"><div><label class="title" for="ahead">${texts.ahead.title}</label><p class="help" id="ahead-help">${texts.ahead.help}</p></div>
 			<input id="ahead" class="field count" type="number" min="0" max="${MOST_AHEAD}" step="1" value="${Number(settings.lookAhead) || 0}" title="${texts.ahead.none}" aria-describedby="ahead-help" /></div>
@@ -242,6 +273,8 @@ export function renderPopup(root: HTMLElement, state: PopupState, actions: Popup
 				return actions.go('packs');
 			case 'home':
 				return actions.go('home');
+			case 'pick':
+				return actions.pick(button.dataset.pack!);
 			case 'about':
 				return actions.showAbout(button.dataset.pack!);
 			case 'enable':

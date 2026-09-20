@@ -1,10 +1,12 @@
 import { browser } from 'wxt/browser';
 import { MatchPattern } from 'wxt/utils/match-patterns';
+import { sitesOnlyOf } from '@/engine';
 import type { Pack } from '@/engine';
 import { send } from '@/messages';
 import { packById, packs } from '@/packs';
 import {
 	apiKey,
+	askedFor,
 	changePack,
 	changeSettings,
 	connection,
@@ -14,7 +16,7 @@ import {
 } from '@/storage';
 import './style.css';
 import type { PopupActions, PopupState } from './view';
-import { closedForm, renderPopup, tailOf } from './view';
+import { closedForm, renderPopup, shownPack, tailOf } from './view';
 
 const root = document.getElementById('popup')!;
 
@@ -26,22 +28,21 @@ async function leaveHeld(): Promise<Record<string, boolean>> {
 	return Object.fromEntries(packs.map((pack, i) => [pack.id, held[i]!]));
 }
 
-/** The pack of the page the popup was opened over. Opening the popup is what lets Barrunto see that page's address. */
-async function packOfThisTab(): Promise<Pack | null> {
+/** The packs of the page the popup was opened over. Opening the popup is what lets Barrunto see that page's address. */
+async function packsOfThisTab(): Promise<Pack[]> {
 	const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
 	const address = tab?.url;
-	if (!address) return null;
-	return (
-		packs.find(({ sites }) => sites.some((site) => new MatchPattern(site).includes(address))) ??
-		null
+	if (!address) return [];
+	return packs.filter(({ sites }) =>
+		sites.some((site) => new MatchPattern(site).includes(address))
 	);
 }
 
 // Everything it shows is read at once, not one thing after another: the popup is blank until then.
-const [connected, stored, pack, leave, session, total, key] = await Promise.all([
+const [connected, stored, here, leave, session, total, key] = await Promise.all([
 	connection.getValue(),
 	settings.getValue(),
-	packOfThisTab(),
+	packsOfThisTab(),
 	leaveHeld(),
 	sessionCounters.getValue(),
 	totalCounters.getValue(),
@@ -52,7 +53,8 @@ let state: PopupState = {
 	connection: connected,
 	settings: stored,
 	packs,
-	pack,
+	here,
+	picked: null,
 	leave,
 	view: 'home',
 	about: null,
@@ -61,6 +63,10 @@ let state: PopupState = {
 	keyTail: tailOf(key),
 	form: closedForm
 };
+
+// The pack the block about this page opens on stays the one it shows: were it worked out again on
+// every change, turning it off would bring the other one up under the same switch.
+state = { ...state, picked: shownPack(state)?.id ?? null };
 
 function set(next: Partial<PopupState>) {
 	state = { ...state, ...next };
@@ -105,24 +111,35 @@ const actions: PopupActions = {
 	setCheckDrafts: (checkDrafts) => void changeSettings({ checkDrafts }),
 	resetCounters: () => void send({ type: 'resetCounters' }),
 	go: (view) => set({ view }),
+	pick: (packId) => set({ picked: packId }),
 	showAbout: (packId) => set({ about: state.about === packId ? null : packId }),
 	async setEnabled(packId, on) {
 		const pack = packById(packId);
 		if (!pack) return;
 		if (!on) {
 			await changePack(pack, () => ({ enabled: false }));
-			// A pack that is off keeps no leave over its site. Leave that cannot be given back (the
-			// stand-in build holds it for good) does no harm.
-			await browser.permissions.remove({ origins: pack.sites }).catch(() => {});
+			// A pack that is off keeps no leave over its site, unless another pack the user wants acts on
+			// it too. Leave that cannot be given back (the stand-in build holds it for good) does no harm.
+			const { packs: chosen } = await settings.getValue();
+			const origins = sitesOnlyOf(
+				pack,
+				packs.filter((other) => chosen[other.id]?.enabled)
+			);
+			if (origins.length) await browser.permissions.remove({ origins }).catch(() => {});
 			return;
 		}
 		// Chrome takes a request for leave only straight from the user's click, and its question may
 		// close the popup before it is answered: the background turns the pack on when leave arrives.
+		// Chrome will not say which pack leave was for, so that is noted first. Nothing is waited for
+		// before asking: the click would be long gone.
 		// Leave already held raises no question, and then turning the pack on is for here.
 		// Chrome may also refuse to ask at all; either way the pack stays off, and the switch shows it.
-		if (await browser.permissions.request({ origins: pack.sites }).catch(() => false)) {
-			await changePack(pack, () => ({ enabled: true }));
-		}
+		const noted = askedFor.setValue({ packId: pack.id, at: Date.now() }).catch(() => {});
+		const granted = await browser.permissions.request({ origins: pack.sites }).catch(() => false);
+		await noted;
+		// Answered with the popup still up: nothing is left for the background to turn on.
+		await askedFor.removeValue().catch(() => {});
+		if (granted) await changePack(pack, () => ({ enabled: true }));
 	}
 };
 

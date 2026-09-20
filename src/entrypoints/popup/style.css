@@ -335,6 +335,42 @@ button {
 	text-transform: uppercase;
 }
 
+/* Two packs on one page: their names in the eyebrow's own line, the one shown underlined, each with a dot that says whether it is on. */
+.picks {
+	display: flex;
+	gap: 14px;
+}
+
+.picks button {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	padding: 0;
+	border: 0;
+	background: none;
+	letter-spacing: inherit;
+	text-transform: inherit;
+}
+
+.picks button::before {
+	content: '';
+	width: 6px;
+	height: 6px;
+	border: 1px solid var(--ink-2);
+	border-radius: 50%;
+}
+
+.picks button[data-on='true']::before {
+	border-color: var(--good);
+	background: var(--good);
+}
+
+.picks button[aria-pressed='true'] {
+	color: var(--ink);
+	text-decoration: underline;
+	text-underline-offset: 3px;
+}
+
 .warning {
 	color: var(--warn);
 	font-size: 13px;

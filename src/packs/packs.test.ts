@@ -16,15 +16,13 @@ describe('the packs', () => {
 		}
 	});
 
-	it('act on sites Chrome can be asked leave for, and on no site of another pack', () => {
+	it('act on sites Chrome can be asked leave for', () => {
 		for (const pack of packs) {
 			expect(pack.sites.length).toBeGreaterThan(0);
-			for (const site of pack.sites) {
-				// A whole site, named outright: the simplest thing Chrome can be asked leave for.
-				expect(site).toMatch(/^https:\/\/[^/*]+\/\*$/);
-				const others = packs.filter((other) => other !== pack).flatMap((other) => other.sites);
-				expect(others).not.toContain(site);
-			}
+			expect(new Set(pack.sites).size).toBe(pack.sites.length);
+			// A whole site, named outright: the simplest thing Chrome can be asked leave for. Two packs
+			// may name the same one: each is turned on and off by itself.
+			for (const site of pack.sites) expect(site).toMatch(/^https:\/\/[^/*]+\/\*$/);
 		}
 	});
 

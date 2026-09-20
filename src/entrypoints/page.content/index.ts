@@ -11,13 +11,14 @@ export default defineContentScript({
 	// WXT has the older one let go of the page, and what that one painted is cleared as it is met.
 	registration: 'runtime',
 	main(ctx) {
-		const pack = packs.find(({ sites }) =>
-			sites.some((site) => new MatchPattern(site).includes(location.href))
-		);
-		const page = pack && pages[pack.id];
-		if (!page) return;
 		const failed = (error: unknown) => console.error('[barrunto] could not start', error);
-		watchPage(ctx, pack, page).catch(failed);
-		if (page.drafts) watchDrafts(ctx, pack, page.drafts).catch(failed);
+		// Every pack of this site gets a watcher of its own, on or off: two packs may act on one site, and
+		// each watcher works only while its own pack is on.
+		for (const pack of packs) {
+			if (!pack.sites.some((site) => new MatchPattern(site).includes(location.href))) continue;
+			const page = pages[pack.id];
+			if (page) watchPage(ctx, pack, page).catch(failed);
+			if (page?.drafts) watchDrafts(ctx, pack, page.drafts).catch(failed);
+		}
 	}
 });

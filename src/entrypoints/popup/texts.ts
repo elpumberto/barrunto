@@ -38,6 +38,8 @@ export const texts = {
 	reading: 'Reading',
 	packs: {
 		open: 'Rule packs',
+		/** What the way between the packs of one page is called. */
+		here: 'Rule packs of this page',
 		back: 'Back',
 		/** What a pack's switch is called: the pack. That it is on or off, the switch says itself. */
 		on: (name: string) => name,

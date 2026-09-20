@@ -14,7 +14,8 @@ const connected: PopupState = {
 		packs: { x: { enabled: true, sensitivity: 'medium', treatments: {} } }
 	},
 	packs: [x, hn],
-	pack: x,
+	here: [x],
+	picked: null,
 	leave: { x: true, hn: true },
 	view: 'home',
 	about: null,
@@ -38,6 +39,7 @@ const actions = {
 	setCheckDrafts: vi.fn(),
 	resetCounters: vi.fn(),
 	go: vi.fn(),
+	pick: vi.fn(),
 	showAbout: vi.fn(),
 	setEnabled: vi.fn()
 } satisfies PopupActions;
@@ -108,7 +110,7 @@ describe('the popup', () => {
 
 	it('shows the controls of the pack of this page, as the user left them', () => {
 		const chosen = { enabled: true, sensitivity: 'high' as const, treatments: {} };
-		draw({ pack: hn, settings: { ...connected.settings, packs: { hn: chosen } } });
+		draw({ here: [hn], settings: { ...connected.settings, packs: { hn: chosen } } });
 		expect(root.querySelector('.eyebrow')!.textContent).toBe('Hacker News');
 		expect(root.querySelector('.stops [aria-pressed="true"]')!.textContent).toBe('High');
 	});
@@ -118,9 +120,9 @@ describe('the popup', () => {
 		draw({ settings: { ...connected.settings, checkDrafts: false } });
 		expect(drafts()!.getAttribute('aria-checked')).toBe('false');
 		const chosen = { enabled: true, sensitivity: 'high' as const, treatments: {} };
-		draw({ pack: hn, settings: { ...connected.settings, packs: { hn: chosen } } });
+		draw({ here: [hn], settings: { ...connected.settings, packs: { hn: chosen } } });
 		expect(drafts()).toBeNull();
-		draw({ pack: null });
+		draw({ here: [] });
 		expect(drafts()).toBeNull();
 		draw({ leave: { x: false, hn: true } });
 		expect(drafts()).toBeNull();
@@ -129,7 +131,7 @@ describe('the popup', () => {
 	it('lets each kind of noise be labelled, faded or hidden, and never what is not noise', () => {
 		const treatments = { snark: 'hide' as const };
 		const chosen = { enabled: true, sensitivity: 'medium' as const, treatments };
-		draw({ pack: hn, settings: { ...connected.settings, packs: { hn: chosen } } });
+		draw({ here: [hn], settings: { ...connected.settings, packs: { hn: chosen } } });
 		const noise = root.querySelector('[data-fold="noise"]')!;
 		expect(noise.querySelector('.brief')!.textContent).toBe('1 faded · 1 hidden');
 		expect([...noise.querySelectorAll('.chip')].map((c) => c.textContent)).toEqual([
@@ -145,15 +147,15 @@ describe('the popup', () => {
 	});
 
 	it('offers the pack of this page while it is off, and says so when the page has none', () => {
-		draw({ pack: hn });
+		draw({ here: [hn] });
 		expect(root.querySelector('.stops')).toBeNull();
 		expect(root.querySelector('.eyebrow')!.textContent).toBe('Hacker News');
 		click('[data-action="enable"][data-pack="hn"]');
 		expect(actions.setEnabled).toHaveBeenCalledWith('hn', true);
 
-		draw({ pack: null });
+		draw({ here: [] });
 		expect(root.textContent).toContain('There is no rule pack for this page');
-		draw({ pack: null, settings: { ...connected.settings, packs: {} } });
+		draw({ here: [], settings: { ...connected.settings, packs: {} } });
 		expect(root.querySelector('.warning')!.textContent).toContain('No rule pack is on');
 	});
 
@@ -291,6 +293,47 @@ describe('the popup', () => {
 		draw({ keyTail: '<b>x' });
 		expect(root.querySelector('.key b')).toBeNull();
 		expect(root.querySelector('.key .tail')!.textContent).toContain('<b>x');
+	});
+});
+
+describe('two packs on one page', () => {
+	// A made-up pack that acts on X.com's site too, and reads nothing the user writes.
+	const people = { ...x, id: 'people', name: 'People', readsDrafts: false };
+	const both = { here: [x, people], packs: [x, people, hn], leave: { x: true, people: true } };
+	const picks = () => [...root.querySelectorAll<HTMLElement>('[data-action="pick"]')];
+	const shown = () => root.querySelector('.picks [aria-pressed="true"]')?.textContent;
+
+	it('names both where one page has two, with which is on, and a page with one as ever', () => {
+		draw({});
+		expect(picks()).toEqual([]);
+		expect(root.querySelector('.eyebrow')!.textContent).toBe('X');
+
+		draw(both);
+		expect(picks().map((pick) => [pick.textContent, pick.dataset.on])).toEqual([
+			['X', 'true'],
+			['People', 'false']
+		]);
+	});
+
+	it('shows the first that is on until the user picks, and then the one picked, on or off', () => {
+		const onlyPeople = { people: { enabled: true, sensitivity: 'high' as const, treatments: {} } };
+		draw({ ...both, settings: { ...connected.settings, packs: onlyPeople } });
+		expect(shown()).toBe('People');
+		expect(root.querySelector('.stops [aria-pressed="true"]')!.textContent).toBe('High');
+		expect(root.querySelector('[data-action="drafts"]')).toBeNull();
+
+		click('[data-action="pick"][data-pack="x"]');
+		expect(actions.pick).toHaveBeenCalledWith('x');
+		draw({ ...both, picked: 'x', settings: { ...connected.settings, packs: onlyPeople } });
+		expect(shown()).toBe('X');
+		expect(root.querySelector('.stops')).toBeNull();
+		expect(root.querySelector<HTMLElement>('[data-action="enable"]')!.dataset.pack).toBe('x');
+	});
+
+	it('shows the first while none is on', () => {
+		draw({ ...both, settings: { ...connected.settings, packs: {} } });
+		expect(shown()).toBe('X');
+		expect(root.querySelector<HTMLElement>('[data-action="enable"]')!.dataset.pack).toBe('x');
 	});
 });
 

@@ -4,11 +4,13 @@ import {
 	contributions,
 	labelledFrom,
 	labelsFor,
+	sitesOf,
+	sitesOnlyOf,
 	strength,
 	strengthsFor,
 	treatmentFor
 } from '.';
-import type { Item, Judgment, Rules } from '.';
+import type { Item, Judgment, Pack, Rules } from '.';
 
 /** An item of a made-up pack: the engine knows nothing of what is in one. */
 interface Shout extends Item {
@@ -135,5 +137,29 @@ describe('what is done to an item', () => {
 		expect(treatmentFor([good!, worse!], asked)).toBe('hide');
 		expect(treatmentFor([good!, bad!], asked)).toBe('fade');
 		expect(treatmentFor([good!], { good: 'hide' })).toBe('label');
+	});
+});
+
+describe('the sites of packs', () => {
+	const on = (id: string, ...sites: string[]): Pack => ({
+		id,
+		name: id,
+		description: '',
+		sites,
+		rules: { ...rules, judgments: [] }
+	});
+	const posts = on('posts', 'https://a.example/*');
+	const people = on('people', 'https://a.example/*', 'https://b.example/*');
+
+	it('are named once each, though two packs act on the same one', () => {
+		expect(sitesOf([posts, people])).toEqual(['https://a.example/*', 'https://b.example/*']);
+		expect(sitesOf([])).toEqual([]);
+	});
+
+	it("are a pack's alone when no other pack acts on them, and a pack is no other to itself", () => {
+		expect(sitesOnlyOf(people, [posts])).toEqual(['https://b.example/*']);
+		expect(sitesOnlyOf(posts, [people])).toEqual([]);
+		expect(sitesOnlyOf(posts, [posts])).toEqual(posts.sites);
+		expect(sitesOnlyOf(posts, [])).toEqual(posts.sites);
 	});
 });
