@@ -13,6 +13,16 @@ describe('stand-in Jev', () => {
 		expect(first.usage.tokensIn).toBeGreaterThan(0);
 	});
 
+	it('answers a question with options with a chance for each, which add up to one, one of them clearly ahead', async () => {
+		const options = { own: 'Own.', advert: 'An advert.', other: 'Something else.' };
+		const asked = [{ id: 'post0', name: 'post 1', question: 'What kind?', options }];
+		const { answers } = await standIn.ask('any', 'a made-up profile', asked);
+		expect(Object.keys(answers).sort()).toEqual(['post0.advert', 'post0.other', 'post0.own']);
+		const chances = Object.values(answers);
+		expect(chances.reduce((sum, p) => sum + p, 0)).toBeCloseTo(1);
+		expect(Math.max(...chances)).toBeGreaterThanOrEqual(0.6);
+	});
+
 	it('rejects a key that starts with "bad"', async () => {
 		await expect(standIn.checkKey('bad-key')).rejects.toMatchObject({ failure: 'keyRejected' });
 		await expect(standIn.checkKey('anything')).resolves.toBeUndefined();

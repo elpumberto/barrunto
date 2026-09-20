@@ -8,5 +8,7 @@ import type { Trait } from './types';
 export const wordingOf = (traits: Trait[]): string =>
 	// What Jev is asked, and nothing else of a trait: the name it goes by in the tuning detail is not.
 	fnv1a(
-		JSON.stringify(traits.map(({ id, question, yes, no }) => [id, question, yes, no]))
+		JSON.stringify(
+			traits.map(({ id, question, yes, no, options }) => [id, question, yes, no, options])
+		)
 	).toString(36);

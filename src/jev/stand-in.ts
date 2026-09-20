@@ -39,7 +39,18 @@ export const standIn: Jev = {
 
 		const answers: Answers = {};
 		for (const trait of traits) {
-			answers[trait.id] = next() < YES_RATE ? 0.75 + next() * 0.25 : next() ** 2 * 0.4;
+			if (!trait.options) {
+				answers[trait.id] = next() < YES_RATE ? 0.75 + next() * 0.25 : next() ** 2 * 0.4;
+				continue;
+			}
+			// One option fits, clearly as a rule, and the rest share what is left.
+			const options = Object.keys(trait.options);
+			const picked = options[Math.floor(next() * options.length)];
+			const sure = 0.6 + next() * 0.4;
+			for (const option of options) {
+				answers[`${trait.id}.${option}`] =
+					option === picked ? sure : (1 - sure) / Math.max(1, options.length - 1);
+			}
 		}
 		const questions = traits.map((t) => t.question).join(' ');
 		return {

@@ -50,6 +50,64 @@ describe('Jev through the SDK', () => {
 		});
 	});
 
+	it('asks a trait with options which of them fits, and returns the chance of each under its own name', async () => {
+		const kinds = { own: 'Their own.', advert: 'An advert.' };
+		const asked = [
+			...traits,
+			{ id: 'post0', name: 'post 1', question: 'What kind?', options: kinds }
+		];
+		const { jev, calls } = jevWith(() =>
+			json({
+				model: 'jev',
+				answers: {
+					a: { type: 'noul', noul: 0.9 },
+					b: { type: 'noul', noul: 0.1 },
+					post0: {
+						type: 'choice',
+						choice: 'advert',
+						confidence: 0.8,
+						probabilities: { own: 0.1, advert: 0.9 }
+					}
+				},
+				usage: { input_tokens: 200, output_tokens: 9 }
+			})
+		);
+		const result = await jev.ask('the-key', { posts: ['made up'] }, asked);
+		expect(result.answers).toEqual({ a: 0.9, b: 0.1, 'post0.own': 0.1, 'post0.advert': 0.9 });
+		expect(calls[0]!.body).toMatchObject({
+			questions: { post0: { type: 'choice', instructions: 'What kind?', criteria: kinds } }
+		});
+	});
+
+	it('takes a choice with an option left out as no answer, and not as a zero for it', async () => {
+		const options = { own: 'Own.', advert: 'An advert.' };
+		const asked = [{ id: 'post0', name: 'post 1', question: 'What kind?', options }];
+		const { jev } = jevWith(() =>
+			json({
+				model: 'jev',
+				answers: {
+					post0: { type: 'choice', choice: 'own', confidence: 1, probabilities: { own: 1 } }
+				},
+				usage: { input_tokens: 1, output_tokens: 1 }
+			})
+		);
+		await expect(jev.ask('k', 'made up', asked)).rejects.toMatchObject({ failure: 'serviceDown' });
+	});
+
+	it('takes an answer of another kind than was asked for as no answer', async () => {
+		const asked = [
+			{ id: 'post0', name: 'post 1', question: 'What kind?', options: { own: 'Own.' } }
+		];
+		const { jev } = jevWith(() =>
+			json({
+				model: 'jev',
+				answers: { post0: { type: 'noul', noul: 0.9 } },
+				usage: { input_tokens: 1, output_tokens: 1 }
+			})
+		);
+		await expect(jev.ask('k', 'made up', asked)).rejects.toMatchObject({ failure: 'serviceDown' });
+	});
+
 	it.each([
 		[401, 'keyRejected'],
 		[403, 'keyRejected'],

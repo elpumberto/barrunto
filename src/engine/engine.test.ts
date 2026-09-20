@@ -8,7 +8,9 @@ import {
 	sitesOnlyOf,
 	strength,
 	strengthsFor,
-	treatmentFor
+	traitsFor,
+	treatmentFor,
+	wordingOf
 } from '.';
 import type { Item, Judgment, Pack, Rules } from '.';
 
@@ -137,6 +139,64 @@ describe('what is done to an item', () => {
 		expect(treatmentFor([good!, worse!], asked)).toBe('hide');
 		expect(treatmentFor([good!, bad!], asked)).toBe('fade');
 		expect(treatmentFor([good!], { good: 'hide' })).toBe('label');
+	});
+});
+
+describe('what Jev is asked about an item', () => {
+	/** A shout is asked, word by word, what kind of word each is. */
+	const kinds = { loud: 'In capitals.', quiet: 'Not in capitals.' };
+	const byWord: Rules<Shout> = {
+		...rules,
+		traits: [{ id: 'rude', name: 'rude', question: 'Is it rude?' }],
+		traitsOf: (shout) =>
+			shout.text.split(' ').map((_, i) => ({
+				id: `word${i}`,
+				name: `word ${i + 1}`,
+				question: `What kind of word is word ${i}?`,
+				options: kinds
+			})),
+		signals: [
+			{
+				id: 'loudWords',
+				name: 'loud words',
+				from: (shout, answers = {}) =>
+					shout.text.split(' ').filter((_, i) => (answers[`word${i}.loud`] ?? 0) > 0.5).length / 2
+			}
+		],
+		judgments: [judgment('shouting', [{ kind: 'signal', id: 'loudWords', weight: 1 }])]
+	};
+
+	it('is what is asked of every item, and then what is asked of this one alone', () => {
+		expect(traitsFor(byWord, post).map((t) => t.id)).toEqual(['rude', 'word0', 'word1']);
+		expect(traitsFor(rules, post)).toEqual([]);
+	});
+
+	it('lets a page signal count what Jev answered, and takes it for nothing before Jev has', () => {
+		const answers = {
+			'word0.loud': 0.9,
+			'word0.quiet': 0.1,
+			'word1.loud': 0.2,
+			'word1.quiet': 0.8
+		};
+		expect(strengthsFor(byWord, answers, post)).toEqual({ shouting: 0.5 });
+		expect(strengthsFor(byWord, {}, post)).toEqual({ shouting: 0 });
+	});
+
+	it('takes a page signal that cannot be worked out for nothing', () => {
+		const broken = {
+			...byWord,
+			signals: [{ id: 'loudWords', name: 'loud words', from: () => NaN }]
+		};
+		expect(strengthsFor(broken, {}, post)).toEqual({ shouting: 0 });
+	});
+
+	it('is worded differently when what there is to choose from changes', () => {
+		const asked = traitsFor(byWord, post);
+		const reworded = asked.map((t) =>
+			t.options ? { ...t, options: { ...kinds, loud: 'LOUD.' } } : t
+		);
+		expect(wordingOf(reworded)).not.toBe(wordingOf(asked));
+		expect(wordingOf([...asked])).toBe(wordingOf(asked));
 	});
 });
 
